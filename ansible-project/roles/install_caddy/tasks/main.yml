@@ -1,0 +1,34 @@
+---
+# Tasks to install and configure Caddy
+
+- name: Add Caddy APT repository key
+  ansible.builtin.apt_key:
+    url: https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Add Caddy APT repository
+  ansible.builtin.apt_repository:
+    repo: "deb [trusted=yes] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main"
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install Caddy package
+  ansible.builtin.package:
+    name: caddy
+    state: present
+
+- name: Deploy Caddyfile configuration
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload Caddy
+
+- name: Ensure Caddy service is running
+  ansible.builtin.service:
+    name: caddy
+    state: started
+    enabled: yes

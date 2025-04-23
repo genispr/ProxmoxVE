@@ -1,0 +1,6 @@
+{# Caddyfile template for reverse proxies #}
+{% for proxy in caddy_proxies %}
+{{ proxy.hostname }}{{ caddy_domain_suffix }} {
+    reverse_proxy {{ proxy.ip }}:{{ proxy.port }}
+}
+{% endfor %}
