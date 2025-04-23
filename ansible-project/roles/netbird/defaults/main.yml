@@ -1,10 +1,3 @@
 # Default variables for the netbird role
 
-# When true, a new LXC container will be created rather than using an existing one.
-create_lxc_container: true
-
-# When true, additional docker setup tasks will be executed in the LXC container.
-setup_docker_lxc: true
-
-# Default container id to use if not creating a new container.
 netbird_ctid: 101

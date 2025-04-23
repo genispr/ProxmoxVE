@@ -1,17 +1,16 @@
 # Ansible Role: netbird
 
-This role installs the NetBird UI on a Debian/Ubuntu system (for example, in a Proxmox LXC container) and (optionally) updates the container configuration to allow NetBird’s required devices.
+This role installs the NetBird UI in a Proxmox LXC container.
+- Supply an existing container ID via `netbird_ctid`.  
+
 
 ## Requirements
 
-- When used in a Proxmox VE environment, you can either supply an existing container ID via `netbird_ctid` or allow the role to create a new LXC container if `create_lxc_container` is set to true.
-- If Docker is required inside the container, set `setup_docker_lxc` to true.
+- Supply an existing container ID via `netbird_ctid`.
 
 ## Role Variables
 
-- `create_lxc_container` (boolean): When true, the role will trigger tasks to create a new LXC container. Default is true.
-- `setup_docker_lxc` (boolean): When true, additional tasks will set up Docker in the LXC container. Default is true.
-- `netbird_ctid` (optional): The Proxmox container ID (e.g. 101) for which NetBird configuration should be applied. Used when not creating a new container.
+- `netbird_ctid`: LXC container ID to use.
 
 ## Example Playbook
 
@@ -21,8 +20,6 @@ This role installs the NetBird UI on a Debian/Ubuntu system (for example, in a P
   roles:
     - role: netbird
       vars:
-        create_lxc_container: true
-        setup_docker_lxc: true
         netbird_ctid: 101
 ```
 

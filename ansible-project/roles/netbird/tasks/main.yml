@@ -1,11 +1,10 @@
-- name: Ensure container config allows NetBird if netbird_ctid is provided
+- name: Ensure container config allows NetBird
   blockinfile:
     path: "/etc/pve/lxc/{{ netbird_ctid }}.conf"
     marker: "# {mark} NETBIRD CONFIGURATION"
     block: |
       lxc.cgroup2.devices.allow: c 10:200 rwm
       lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
-  when: netbird_ctid is defined
 
 - name: Install required packages for NetBird
   apt:
