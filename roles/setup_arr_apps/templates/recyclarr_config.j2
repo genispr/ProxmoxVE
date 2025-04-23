@@ -1,0 +1,8 @@
+# Recyclarr Configuration
+port = {{ recyclarr_port | default("7879") }}
+config_dir = "{{ recyclarr_config | default('/docker/recyclarr/config') }}"
+log_level = "info"
+dry_run = false
+api_key = "{{ recyclarr_api_key | default('changeme') }}"
+base_url = "/recyclarr"
+# Further configuration options...

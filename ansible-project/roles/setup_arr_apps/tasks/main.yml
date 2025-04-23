@@ -1,4 +1,8 @@
----
+--- 
+# Role: setup_arr_apps
+# This playbook creates an LXC container for media apps, installs Docker,
+# and deploys media aggregation applications.
+
 - name: Create LXC container for media apps
   include_role:
     name: create_lxc_container
@@ -10,14 +14,14 @@
     lxc_cores: "{{ media_lxc_cores }}"
     lxc_memory: "{{ media_lxc_memory }}"
     lxc_disk_size: "{{ media_lxc_disk_size }}"
-    lxc_enable_dri_passthrough: false  # Not needed for media apps
+    lxc_enable_dri_passthrough: false  # DRI passthrough not required for media apps
 
 - name: Setup Docker in media apps container
   include_role:
     name: setup_docker_lxc
   vars:
     install_docker_compose_plugin: "{{ media_install_docker_compose_plugin | default(true) }}"
-    # Optional: define docker_user if needed
+    # Optional: Define docker_user if required
 
 - name: Deploy Prowlarr
   include_tasks: prowlarr.yml

@@ -1,0 +1,8 @@
+# Readarr Configuration
+port = {{ readarr_port | default("8787") }}
+config_dir = "{{ readarr_config | default('/docker/readarr/config') }}"
+database_path = "{{ readarr_database_path | default('/var/lib/readarr/database') }}"
+log_level = "{{ readarr_logging_level | default('info') }}"
+api_key = "{{ readarr_api_key | default('changeme') }}"
+base_url = "/readarr"
+# Other Readarr-specific settings...

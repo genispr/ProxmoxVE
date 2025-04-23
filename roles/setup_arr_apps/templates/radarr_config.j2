@@ -1,0 +1,9 @@
+# Radarr Configuration
+port = {{ radarr_port | default("7878") }}
+config_dir = "{{ radarr_config | default('/docker/radarr/config') }}"
+log_level = "info"
+update_check = true
+download_client = "sabnzbd"
+api_key = "{{ radarr_api_key | default('changeme') }}"
+base_url = "/radarr"
+# Additional settings as required ...

@@ -1,0 +1,8 @@
+# Lidarr Configuration
+port = {{ lidarr_port | default("8686") }}
+config_dir = "{{ lidarr_config | default('/docker/lidarr/config') }}"
+log_level = "info"
+update_check = true
+api_key = "{{ lidarr_api_key | default('changeme') }}"
+base_url = "/lidarr"
+# More options can be added here ...

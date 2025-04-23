@@ -1,0 +1,8 @@
+# Bazarr Configuration
+port = {{ bazarr_port | default("6767") }}
+config_dir = "{{ bazarr_config | default('/docker/bazarr/config') }}"
+language = "en"
+log_level = "info"
+api_key = "{{ bazarr_api_key | default('changeme') }}"
+base_url = "/bazarr"
+# Additional Bazarr settings...

@@ -1,0 +1,9 @@
+# Sonarr Configuration
+port = {{ sonarr_port | default("8989") }}
+config_dir = "{{ sonarr_config | default('/docker/sonarr/config') }}"
+log_level = "info"
+update_check = true
+download_client = "sabnzbd"
+api_key = "{{ sonarr_api_key | default('changeme') }}"
+base_url = "/sonarr"
+# Additional settings can be added here ...
