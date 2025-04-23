@@ -1,7 +1,23 @@
+##############################################################################
+# Vaultwarden Tasks File
+#
+# This file automates the entire Vaultwarden installation and configuration:
+#  • It updates the APT cache and installs required packages.
+#  • It retrieves the latest Vaultwarden release tag from GitHub,
+#    clones the repository, and builds it using Cargo.
+#  • It creates necessary directories and copies the built binary.
+#  • In parallel, it fetches, downloads, and extracts the latest Web-Vault assets.
+#  • It generates a .env configuration file using overridable variables.
+#  • Finally, it creates a systemd service file, reloads systemd,
+#    and enables/restarts the Vaultwarden service.
+##############################################################################
+
+# Updates the system package index.
 - name: Update apt cache
   apt:
     update_cache: yes
 
+# Installs dependencies required for building and running Vaultwarden.
 - name: Install required packages
   apt:
     name:
@@ -15,6 +31,7 @@
       - curl
     state: present
 
+# Retrieves the most recent Vaultwarden release tag from GitHub.
 - name: Get latest Vaultwarden release tag
   shell: >
     curl -fsSL https://api.github.com/repos/dani-garcia/vaultwarden/releases/latest |
@@ -22,37 +39,43 @@
   register: vaultwarden_release
   changed_when: false
 
+# Clones the Vaultwarden repository for the specified release.
 - name: Clone Vaultwarden repository
   git:
-    repo: 'https://github.com/dani-garcia/vaultwarden.git'
+    repo: "https://github.com/dani-garcia/vaultwarden.git"
     dest: /tmp/vaultwarden
     version: "{{ vaultwarden_release.stdout }}"
     force: yes
 
+# Compiles Vaultwarden in release mode using Cargo.
 - name: Build Vaultwarden using cargo
   shell: |
     cd /tmp/vaultwarden && cargo build --release
   environment:
     PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+  creates: /tmp/vaultwarden/target/release/vaultwarden
 
+# Sets up the necessary directories for the Vaultwarden installation.
 - name: Create vaultwarden directories
   file:
     path: "{{ item }}"
     state: directory
     owner: vaultwarden
     group: vaultwarden
-    mode: '0755'
+    mode: "0755"
   loop:
     - /opt/vaultwarden/bin
     - /opt/vaultwarden/data
     - /opt/vaultwarden/web-vault
 
+# Copies the compiled binary to the designated installation directory.
 - name: Copy Vaultwarden binary
   copy:
     src: /tmp/vaultwarden/target/release/vaultwarden
     dest: /opt/vaultwarden/bin/vaultwarden
-    mode: '0755'
+    mode: "0755"
 
+# Retrieves the latest release tag for the Web-Vault assets.
 - name: Get latest Web-Vault release tag
   shell: >
     curl -fsSL https://api.github.com/repos/dani-garcia/bw_web_builds/releases/latest |
@@ -60,31 +83,36 @@
   register: webvault_release
   changed_when: false
 
+# Downloads the Web-Vault archive.
 - name: Download Web-Vault archive
   shell: |
     curl -fsSL -o /tmp/bw_web.tar.gz https://github.com/dani-garcia/bw_web_builds/releases/download/{{ webvault_release.stdout }}/bw_web_{{ webvault_release.stdout }}.tar.gz
   args:
     creates: /tmp/bw_web.tar.gz
 
+# Extracts the downloaded Web-Vault archive into the installation directory.
 - name: Extract Web-Vault assets
   unarchive:
     src: /tmp/bw_web.tar.gz
     dest: /opt/vaultwarden/
     remote_src: yes
 
+# Generates the configuration file (.env) using customizable variables.
+# The ADMIN_TOKEN and DATABASE_URL can be overridden; defaults are provided.
 - name: Create Vaultwarden .env file
   copy:
     dest: /opt/vaultwarden/.env
     content: |
-      ADMIN_TOKEN=''
+      ADMIN_TOKEN='{{ admin_token | default("") }}'
       ROCKET_ADDRESS=0.0.0.0
       DATA_FOLDER=/opt/vaultwarden/data
-      DATABASE_URL=sqlite:///opt/vaultwarden/data/vaultwarden.db
+      DATABASE_URL={{ database_url | default("sqlite:///opt/vaultwarden/data/vaultwarden.db") }}
       WEB_VAULT_ENABLED=true
     owner: vaultwarden
     group: vaultwarden
-    mode: '0644'
+    mode: "0644"
 
+# Creates a systemd unit file for the Vaultwarden service.
 - name: Create systemd service for Vaultwarden
   copy:
     dest: /etc/systemd/system/vaultwarden.service
@@ -103,12 +131,14 @@
 
       [Install]
       WantedBy=multi-user.target
-    mode: '0644'
+    mode: "0644"
 
+# Reloads systemd to recognize the new Vaultwarden service.
 - name: Reload systemd configuration
   systemd:
     daemon_reload: yes
 
+# Enables the Vaultwarden service to start on boot and restarts it immediately.
 - name: Enable and restart Vaultwarden service
   systemd:
     name: vaultwarden
