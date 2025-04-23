@@ -1,0 +1,11 @@
+---
+- name: Deploy Radarr container
+  community.docker.docker_container:
+    name: radarr
+    image: "{{ radarr_image | default('ghcr.io/linuxserver/radarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ radarr_port | default('7878:7878') }}"
+    volumes:
+      - "{{ radarr_config | default('/docker/radarr/config') }}:/config"

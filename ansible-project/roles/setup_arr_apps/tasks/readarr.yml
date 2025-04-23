@@ -1,0 +1,11 @@
+---
+- name: Deploy Readarr container
+  community.docker.docker_container:
+    name: readarr
+    image: "{{ readarr_image | default('ghcr.io/linuxserver/readarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ readarr_port | default('8787:8787') }}"
+    volumes:
+      - "{{ readarr_config | default('/docker/readarr/config') }}:/config"

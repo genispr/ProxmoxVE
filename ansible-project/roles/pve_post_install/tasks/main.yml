@@ -1,5 +1,9 @@
 ---
-# This file orchestrates the post-pve-install role by including task files.
+# Main Task Orchestrator for the 'post_pve_install' Role.
+# This file aggregates and runs a series of tasks to configure Proxmox VE after installation.
+# Tasks include gathering system information, importing variables, initial checks,
+# setting up APT repositories, managing subscription nag messages,
+# and optionally handling high availability services and system updates.
 
 - name: Gather OS specific variables (like ansible_distribution_release)
   ansible.builtin.setup:

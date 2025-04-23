@@ -1,0 +1,35 @@
+---
+- name: Configure Prowlarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Prowlarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Sonarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Sonarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Radarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Radarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Lidarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Lidarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Bazarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Bazarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Readarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Readarr settings..."
+  # ...existing configuration code or further tasks...
+
+- name: Configure Recyclarr settings
+  ansible.builtin.debug:
+    msg: "Configuring Recyclarr settings..."
+  # ...existing configuration code or further tasks...

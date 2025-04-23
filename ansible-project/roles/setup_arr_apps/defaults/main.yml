@@ -1,0 +1,41 @@
+---
+# LXC container default settings for media apps
+media_lxc_id: 300
+media_lxc_hostname: media-apps
+media_lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
+media_lxc_network_config: "net0: name=eth0,bridge=vmbr0,ip=dhcp"
+media_lxc_cores: 2
+media_lxc_memory: 2048
+media_lxc_disk_size: 20G
+
+# Docker settings
+media_install_docker_compose_plugin: true
+
+# Default container images and port mappings for each app
+prowlarr_image: "ghcr.io/linuxserver/prowlarr:latest"
+prowlarr_port: "9696:9696"
+prowlarr_config: "/docker/prowlarr/config"
+
+sonarr_image: "ghcr.io/linuxserver/sonarr:latest"
+sonarr_port: "8989:8989"
+sonarr_config: "/docker/sonarr/config"
+
+radarr_image: "ghcr.io/linuxserver/radarr:latest"
+radarr_port: "7878:7878"
+radarr_config: "/docker/radarr/config"
+
+lidarr_image: "ghcr.io/linuxserver/lidarr:latest"
+lidarr_port: "8686:8686"
+lidarr_config: "/docker/lidarr/config"
+
+bazarr_image: "ghcr.io/linuxserver/bazarr:latest"
+bazarr_port: "6767:6767"
+bazarr_config: "/docker/bazarr/config"
+
+readarr_image: "ghcr.io/linuxserver/readarr:latest"
+readarr_port: "8787:8787"
+readarr_config: "/docker/readarr/config"
+
+recyclarr_image: "ghcr.io/linuxserver/recyclarr:latest"
+recyclarr_port: "7879:7879"
+recyclarr_config: "/docker/recyclarr/config"

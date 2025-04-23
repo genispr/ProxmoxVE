@@ -1,0 +1,11 @@
+---
+- name: Deploy Bazarr container
+  community.docker.docker_container:
+    name: bazarr
+    image: "{{ bazarr_image | default('ghcr.io/linuxserver/bazarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ bazarr_port | default('6767:6767') }}"
+    volumes:
+      - "{{ bazarr_config | default('/docker/bazarr/config') }}:/config"

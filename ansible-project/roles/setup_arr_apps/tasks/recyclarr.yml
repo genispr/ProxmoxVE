@@ -1,0 +1,11 @@
+---
+- name: Deploy Recyclarr container
+  community.docker.docker_container:
+    name: recyclarr
+    image: "{{ recyclarr_image | default('ghcr.io/linuxserver/recyclarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ recyclarr_port | default('7879:7879') }}"
+    volumes:
+      - "{{ recyclarr_config | default('/docker/recyclarr/config') }}:/config"

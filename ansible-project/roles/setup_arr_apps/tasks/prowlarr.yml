@@ -1,0 +1,11 @@
+---
+- name: Deploy Prowlarr container
+  community.docker.docker_container:
+    name: prowlarr
+    image: "{{ prowlarr_image | default('ghcr.io/linuxserver/prowlarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ prowlarr_port | default('9696:9696') }}"
+    volumes:
+      - "{{ prowlarr_config | default('/docker/prowlarr/config') }}:/config"

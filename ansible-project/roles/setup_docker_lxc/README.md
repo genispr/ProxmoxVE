@@ -1,13 +1,15 @@
 # Ansible Role: Setup Docker in LXC
 
-This role installs Docker Engine inside a Debian or Ubuntu-based LXC container.
+This role installs Docker Engine inside an LXC container running Debian or Ubuntu.
+It utilizes the official Docker installation script and ensures the Docker service
+is properly configured, started, and optionally enhanced with the Docker Compose V2 plugin.
 
 ## Features
 
 - Installs the latest stable Docker Engine using the official `get-docker.sh` script.
-- Ensures necessary prerequisites (`curl`, `gpg`) are installed.
-- Starts and enables the Docker systemd service.
-- Optionally installs the Docker Compose V2 plugin (`docker-compose-plugin`).
+- Manages required prerequisites like `curl` and `gpg`.
+- Ensures the Docker daemon is running and enabled.
+- Optionally installs the Docker Compose V2 plugin for improved compose support.
 
 ## Requirements
 
@@ -18,8 +20,8 @@ This role installs Docker Engine inside a Debian or Ubuntu-based LXC container.
 
 ## Role Variables
 
-- `install_docker_compose_plugin`: (Default: `true`) Set to `false` to skip installing the Docker Compose V2 plugin.
-- `docker_user`: (Optional) If defined, this user will be added to the `docker` group, allowing them to run Docker commands without `sudo`.
+- `install_docker_compose_plugin`: (Default: `true`) Disable to skip Docker Compose V2 plugin installation.
+- `docker_user`: (Optional) Add this user to the `docker` group for privilege-free Docker command usage.
 
 ## Dependencies
 
@@ -74,6 +76,8 @@ This role is typically used *after* the `create_lxc_container` role has run and 
 1.  **`add_host` module:** Add the container dynamically in the first play.
 2.  **Dynamic Inventory Script:** Use a Proxmox dynamic inventory script that automatically discovers running containers.
 3.  **Manual Inventory Update:** Update your inventory file manually before running the second play.
+
+---
 
 ## License
 

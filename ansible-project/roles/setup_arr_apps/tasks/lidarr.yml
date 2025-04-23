@@ -1,0 +1,11 @@
+---
+- name: Deploy Lidarr container
+  community.docker.docker_container:
+    name: lidarr
+    image: "{{ lidarr_image | default('ghcr.io/linuxserver/lidarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ lidarr_port | default('8686:8686') }}"
+    volumes:
+      - "{{ lidarr_config | default('/docker/lidarr/config') }}:/config"

@@ -1,15 +1,18 @@
 ---
-# tasks file for Intel QSV setup (included from main.yml)
+# Intel QSV Setup Tasks
+# This file configures hardware acceleration for the Jellyfin Media Server.
+# It adds the non-free component (if required on Debian), selects the appropriate Intel VA-API driver,
+# installs necessary packages, and performs a validation check using 'vainfo'.
 
 - name: Add non-free component for Intel drivers (Debian)
   ansible.builtin.apt_repository:
     repo: "deb http://deb.debian.org/debian {{ ansible_distribution_release }} main contrib {{ debian_non_free_component }}"
     state: present
-    filename: debian-non-free # Separate file to avoid conflicts
+    filename: debian-non-free # Use a separate file to prevent repository conflicts
   when: ansible_distribution == 'Debian'
   register: non_free_repo_added
 
-# Need to update cache if non-free repo was just added
+# Update apt cache if the non-free repository was added
 - name: Update apt cache after adding non-free (Debian)
   ansible.builtin.apt:
     update_cache: yes
@@ -41,6 +44,7 @@
     append: yes
   notify: restart jellyfin # Restart needed for group changes to take effect
 
+# Perform a post-installation validation check using 'vainfo'
 - name: Check vainfo output (informational)
   ansible.builtin.command: vainfo
   register: vainfo_check

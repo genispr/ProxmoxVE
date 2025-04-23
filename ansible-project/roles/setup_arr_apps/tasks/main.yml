@@ -1,0 +1,44 @@
+---
+- name: Create LXC container for media apps
+  include_role:
+    name: create_lxc_container
+  vars:
+    lxc_id: "{{ media_lxc_id }}"
+    lxc_hostname: "{{ media_lxc_hostname }}"
+    lxc_os_template: "{{ media_lxc_os_template }}"
+    lxc_network_config: "{{ media_lxc_network_config }}"
+    lxc_cores: "{{ media_lxc_cores }}"
+    lxc_memory: "{{ media_lxc_memory }}"
+    lxc_disk_size: "{{ media_lxc_disk_size }}"
+    lxc_enable_dri_passthrough: false  # Not needed for media apps
+
+- name: Setup Docker in media apps container
+  include_role:
+    name: setup_docker_lxc
+  vars:
+    install_docker_compose_plugin: "{{ media_install_docker_compose_plugin | default(true) }}"
+    # Optional: define docker_user if needed
+
+- name: Deploy Prowlarr
+  include_tasks: prowlarr.yml
+
+- name: Deploy Sonarr
+  include_tasks: sonarr.yml
+
+- name: Deploy Radarr
+  include_tasks: radarr.yml
+
+- name: Deploy Lidarr
+  include_tasks: lidarr.yml
+
+- name: Deploy Bazarr
+  include_tasks: bazarr.yml
+
+- name: Deploy Readarr
+  include_tasks: readarr.yml
+
+- name: Deploy Recyclarr
+  include_tasks: recyclarr.yml
+
+- name: Configure all media apps
+  include_tasks: configure_apps.yml

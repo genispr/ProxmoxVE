@@ -1,46 +1,43 @@
 # Ansible Role: Setup Jellyfin in LXC
 
-This role installs and configures Jellyfin Media Server within a Debian or Ubuntu-based LXC container.
+This role installs and configures the Jellyfin Media Server within an LXC container on Debian or Ubuntu systems.
 
 ## Features
 
-- Installs Jellyfin from the official repository for easy updates.
-- Ensures the Jellyfin service is running and enabled.
-- Installs `ffmpeg` (highly recommended for transcoding) - optional.
-- Optionally installs `mc` (Midnight Commander), a user-friendly file manager.
+- Installs the Jellyfin media server using its official repository for seamless updates.
+- Ensures the Jellyfin service is actively running and enabled at startup.
+- Optionally installs and configures supporting packages such as ffmpeg for transcoding and Midnight Commander for file management.
 - **Optional Intel Quick Sync Video (QSV) Hardware Acceleration:**
-    - Installs necessary drivers (`intel-media-va-driver` or `intel-media-va-driver-non-free`).
-    - Adds the `jellyfin` user to the `render` group for access to `/dev/dri`.
-    - Includes a `vainfo` check to verify driver and VA-API setup (for informational purposes).
-    - **Important:** QSV requires passthrough of `/dev/dri` from the Proxmox host to the LXC container. This should be configured in the LXC settings (e.g., using the `create_lxc_container` role, which is recommended).
+  - Configures necessary drivers (choosing between `intel-media-va-driver` or `intel-media-va-driver-non-free` based on your OS version).
+  - Adds the `jellyfin` user to the `render` group for access to GPU devices.
+  - Performs a validation check using `vainfo` to help diagnose potential issues.
+  - **Important:** Requires proper passthrough of `/dev/dri` from the Proxmox host to the LXC container. Configure this in your LXC settings.
 
 ## Requirements
 
 - Ansible 2.9 or higher.
-- Debian or Ubuntu-based LXC container.
-- Assumes the role is executed *inside* the target container (e.g., via `ansible_connection=lxc`).
-- **For Intel QSV:** Requires `/dev/dri` passthrough from the Proxmox host to the container (configure in LXC settings).
+- A Debian or Ubuntu-based LXC container.
+- Execute the role *inside* the target container (e.g., via `ansible_connection=lxc`).
+- For Intel QSV: Ensure that `/dev/dri` is passed through to the container.
 
 ## Role Variables
 
-See `defaults/main.yml` for a complete list of configurable variables and their default values.
+Refer to `defaults/main.yml` for variable details. Key variables include:
 
-**Key Variables:**
-
-- `jellyfin_install_ffmpeg`: (Default: `true`) Install the `ffmpeg` package.
-- `jellyfin_install_mc`: (Default: `false`) Install the `mc` package.
-- `jellyfin_setup_intel_qsv`: (Default: `false`) Attempt to configure Intel QSV hardware acceleration.
-- `jellyfin_package_version`: (Default: `latest`) Specifies the version of Jellyfin to install. Use 'latest' for the newest release, or specify a version number (e.g., "10.8.10") to pin to a particular release.
-- `jellyfin_synchronize_timezone`: (Default: `false`) If `true`, sets the container's timezone to match the host's.
-- `jellyfin_manage_web_package`: (Default: `false`) If `true`, explicitly manages the `jellyfin-web` package and web directory.
+- `jellyfin_install_ffmpeg`: (Default: `true`) Enable ffmpeg installation.
+- `jellyfin_install_mc`: (Default: `false`) Toggle installation of Midnight Commander.
+- `jellyfin_setup_intel_qsv`: (Default: `false`) Enable optional Intel QSV acceleration.
+- `jellyfin_package_version`: (Default: `latest`) Install the latest Jellyfin release or a specific version.
+- `jellyfin_synchronize_timezone`: (Default: `false`) Sync container timezone with the host.
+- `jellyfin_manage_web_package`: (Default: `false`) Manage the Jellyfin web package explicitly.
 
 ## Dependencies
 
 None
 
 ## Example Playbook
-```
-yaml
+
+```yaml
 - hosts: your_lxc_host # Target the LXC container
   become: true  # Jellyfin installation requires root
   gather_facts: true # Usually helpful for distribution info
@@ -52,11 +49,5 @@ yaml
         jellyfin_setup_intel_qsv: true # Try to set up Intel QSV (if /dev/dri passthrough is configured)
         jellyfin_package_version: "10.8.10" # Install a specific version
 ```
-**Important Notes:**
 
-- **Hardware Acceleration:** If using `jellyfin_setup_intel_qsv: true`, ensure you have properly configured device passthrough for `/dev/dri` in your LXC container settings on the Proxmox host. Otherwise, this setup will likely fail or be ineffective. Consult the Proxmox documentation for instructions on device passthrough.
-- **Debian Non-Free Components:** For Debian systems, the role automatically handles enabling the `non-free` (for Debian versions < 12) or `non-free-firmware` (for Debian versions >= 12) APT component if Intel QSV setup is enabled. This is necessary to install the required drivers.
-
-## License
-
-MIT
+**Note:** For Intel QSV, ensure `/dev/dri` passthrough is correctly configured.

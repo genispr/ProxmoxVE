@@ -1,0 +1,11 @@
+---
+- name: Deploy Sonarr container
+  community.docker.docker_container:
+    name: sonarr
+    image: "{{ sonarr_image | default('ghcr.io/linuxserver/sonarr:latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ sonarr_port | default('8989:8989') }}"
+    volumes:
+      - "{{ sonarr_config | default('/docker/sonarr/config') }}:/config"

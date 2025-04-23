@@ -33,23 +33,7 @@ This role creates or updates LXC containers on Proxmox Virtual Environment (PVE)
 
 ## Role Variables
 
-See `defaults/main.yml` for a complete list of configurable variables, their default values, and detailed comments.
-
-**Key Variables:**
-
-- `lxc_id`: (Required) The numeric ID for the LXC container.
-- `lxc_hostname`: (Required) The hostname for the container.
-- `lxc_password`: The root password for the container (see Security Considerations).
-- `proxmox_api_password`: (Required) Proxmox API password or token secret (use Vault!).
-- `lxc_os_template`: The Proxmox template to use (e.g., `local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst`).
-- `lxc_network_config`: Dictionary defining the network interface (see defaults for static/DHCP examples).
-- `lxc_cores`, `lxc_memory`, `lxc_disk_size`: Resource allocation.
-- `lxc_features`: Features like `nesting` and `keyctl`.
-- `lxc_enable_dri_passthrough`: Enable hardware acceleration passthrough.
-
-## Dependencies
-
-- Requires the `community.general` Ansible collection.
+Refer to `defaults/main.yml` for a complete list of configurable variables.
 
 ## Example Playbook
 

@@ -1,13 +1,20 @@
 ---
+# Tasks for post-install configuration of Proxmox VE.
+# This file checks for the existence of the subscription nag removal script and applies it if necessary.
+# It notifies the handler to reinstall proxmox-widget-toolkit when changes occur.
+
+# Check if the subscription nag removal script exists
 - name: Check if subscription nag removal script exists
   ansible.builtin.stat:
     path: /etc/apt/apt.conf.d/no-nag-script
   register: nag_script_stat
 
+# Determine if the nag removal should be applied
 - name: Determine if nag removal should be applied
   ansible.builtin.set_fact:
     apply_nag_removal: "{{ disable_nag | bool and not nag_script_stat.stat.exists }}"
 
+# Apply the subscription nag removal script if necessary
 - name: Apply subscription nag removal script
   ansible.builtin.template:
     src: no-nag-script.j2
@@ -16,4 +23,4 @@
     group: root
     mode: "0644"
   when: apply_nag_removal
-  notify: Reinstall proxmox-widget-toolkit # Notify handler to apply change
+  notify: Reinstall proxmox-widget-toolkit

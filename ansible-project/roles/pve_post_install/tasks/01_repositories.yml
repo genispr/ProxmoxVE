@@ -1,4 +1,5 @@
 ---
+# Configure APT Sources and Repositories for Proxmox VE and related services.
 - name: Configure Debian Sources (/etc/apt/sources.list)
   ansible.builtin.template:
     src: "sources.list.j2"

@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  role_name: setup_arr_apps    # renamed from setup_media_apps
+  author: Your Name    # update as needed
+  description: >
+    Creates an LXC container via the create_lxc_container role,
+    installs Docker via the setup_docker_lxc role, and deploys media aggregation apps:
+    Prowlarr, Sonarr, Radarr, Lidarr, Bazarr, Readarr, and Recyclarr.
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - media
+    - apps
+    - docker
+    - lxc
+    - prowlarr
+    - sonarr
+    - radarr
+    - lidarr
+    - bazarr
+    - readarr
+    - recyclarr
+
+dependencies: []
