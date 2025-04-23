@@ -1,0 +1,34 @@
+- name: "Create LXC container for Vaultwarden"
+  hosts: proxmox_node
+  become: yes
+  gather_facts: no
+  vars_prompt:
+    - name: "vault_proxmox_api_password"
+      prompt: "Enter Proxmox API password or token"
+      private: yes
+  roles:
+    - role: create_lxc_container
+      vars:
+        # Change these variables as needed
+        lxc_id: 205
+        lxc_hostname: vaultwarden
+        lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
+        lxc_cores: 2
+        lxc_memory: 2048
+        lxc_disk_size: 10G
+        lxc_network_config:
+          net0: "name=eth0,bridge=vmbr0,ip=dhcp"
+        proxmox_api_password: "{{ vault_proxmox_api_password }}"
+        # ...existing container defaults...
+
+- name: "Install Vaultwarden in the new LXC container"
+  hosts: "{{ hostvars['localhost']['lxc_205_ip'] }}"
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Add container to inventory as vaultwarden_host
+      add_host:
+        name: vaultwarden_host
+        ansible_host: "{{ hostvars['localhost']['lxc_205_ip'] }}"
+  roles:
+    - vaultwarden
