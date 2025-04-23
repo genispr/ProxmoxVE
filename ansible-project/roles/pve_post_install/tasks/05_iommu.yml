@@ -5,13 +5,13 @@
   ansible.builtin.command: cat /proc/cmdline
   register: cmdline_output
   changed_when: false
-  failed_when: false  # Don't fail if /proc/cmdline is unreadable
+  failed_when: false # Don't fail if /proc/cmdline is unreadable
 
 - name: Determine CPU vendor (Intel or AMD)
-  ansible.builtin.shell: grep -q 'vendor_id\\t: GenuineIntel' /proc/cpuinfo && echo intel || echo amd
+  ansible.builtin.shell: "grep -q 'vendor_id\\t: GenuineIntel' /proc/cpuinfo && echo intel || echo amd"
   register: cpu_vendor
   changed_when: false
-  failed_when: false  # Don't fail if /proc/cpuinfo is unreadable
+  failed_when: false # Don't fail if /proc/cpuinfo is unreadable
 
 - name: Set IOMMU parameter based on CPU vendor
   ansible.builtin.set_fact:

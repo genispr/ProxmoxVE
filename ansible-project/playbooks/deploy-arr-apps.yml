@@ -1,0 +1,31 @@
+---
+- name: Deploy ARR Apps in an LXC container
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    lxc_ip_fact_name: arr_apps_lxc_ip
+    lxc_hostname: arr-apps
+    lxc_password: asecurepassword
+    lxc_disk_size: 20G
+    lxc_network_config:
+      net0: "name=eth0,bridge=vmbr0,ip=dhcp"
+    proxmox_api_password: test
+    proxmox_node: pve
+
+    arr_apps_host: "{{ arr_apps_lxc_ip }}"
+
+  tasks:
+
+    - name: Create LXC Container for ARR Apps
+      include_role:
+        name: create_lxc_container
+
+    - name: Setup ARR Apps on the LXC Container
+      include_role:
+        name: setup_arr_apps
+      vars:
+        ansible_connection: lxc
+        ansible_user: root
+        ansible_host: "{{ arr_apps_host }}"
+        ansible_python_interpreter: /usr/bin/python3

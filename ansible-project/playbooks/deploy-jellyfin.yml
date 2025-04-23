@@ -8,7 +8,8 @@
     lxc_hostname: jellyfin
     lxc_password: asecurepassword
     lxc_disk_size: 10G
-    lxc_network_config: net0: name=eth0,bridge=vmbr0,ip=dhcp
+    lxc_network_config:
+      net0: "name=eth0,bridge=vmbr0,ip=dhcp"
     lxc_enable_dri_passthrough: true
     proxmox_api_password: test
     proxmox_node: pve

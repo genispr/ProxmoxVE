@@ -1,0 +1,5 @@
+---
+- import_playbook: setup-pve.yml
+- import_playbook: deploy-jellyfin.yml
+- import_playbook: deploy-docker.yml
+- import_playbook: deploy-arr-apps.yml

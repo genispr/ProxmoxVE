@@ -1,0 +1,6 @@
+---
+- name: "Deploy Opnsense VM on Proxmox"
+  hosts: localhost
+  become: true
+  roles:
+    - opnsense_vm

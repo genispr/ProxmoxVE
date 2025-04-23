@@ -21,7 +21,7 @@ jellyfin_install_mc: false
 
 # Attempt to set up Intel Quick Sync Video (QSV) hardware acceleration
 # Requires host device passthrough (/dev/dri) configured in LXC settings (e.g., via create_lxc_container role)
-jellyfin_setup_intel_qsv: false
+jellyfin_setup_intel_qsv: true
 
 # APT component needed for non-free Intel drivers on Debian
 # Debian < 12 typically uses 'non-free'. Debian >= 12 uses 'non-free-firmware'
@@ -30,8 +30,4 @@ debian_non_free_component: "{{ 'non-free-firmware' if (ansible_distribution == '
 # --- Additional Options ---
 
 # Timezone synchronization
-jellyfin_synchronize_timezone: false
-jellyfin_timezone: null # Set to a timezone identifier (e.g., "America/Los_Angeles") if not synchronizing
-
-# Manage jellyfin-web package explicitly (if needed)
-jellyfin_manage_web_package: false
+jellyfin_synchronize_timezone: true

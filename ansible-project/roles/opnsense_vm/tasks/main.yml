@@ -1,0 +1,30 @@
+---
+- name: "Create Opnsense VM - qm create"
+  command: >
+    qm create {{ opnsense_vm_id }}
+    -name {{ opnsense_hostname }}
+    -cores {{ opnsense_cpu_cores }}
+    -memory {{ opnsense_ram }}
+    -net0 virtio,bridge={{ opnsense_bridge }},macaddr={{ opnsense_mac }}
+    -ostype l26
+  register: create_vm
+  changed_when: "'created' in create_vm.stdout"
+
+- name: "Allocate disk for Opnsense VM"
+  command: >
+    pvesm alloc {{ opnsense_storage }} {{ opnsense_vm_id }} vm-{{ opnsense_vm_id }}-disk-0 4M
+
+- name: "Import disk for Opnsense VM"
+  command: >
+    qm importdisk {{ opnsense_vm_id }} /path/to/opnsense-disk-image.qcow2 {{ opnsense_storage }} -format qcow2
+  # Adjust the path to the OPNsense image as needed
+
+- name: "Set VM configuration"
+  command: >
+    qm set {{ opnsense_vm_id }}
+    -efidisk0 {{ opnsense_storage }}:vm-{{ opnsense_vm_id }}-disk-0,efitype=4m
+    -boot order=scsi0
+    -onboot 1
+
+- name: "Start Opnsense VM"
+  command: qm start {{ opnsense_vm_id }}
