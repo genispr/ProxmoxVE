@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: "Your Name or GitHub Username"
+  description: "An Ansible role to create and configure Home Assistant OS VMs on ProxmoxVE."
+  company: "Your Company"
+  license: "MIT"
+  min_ansible_version: "2.9"
+  platforms:
+    - name: "Debian"
+      versions:
+        - all
+dependency: {}
