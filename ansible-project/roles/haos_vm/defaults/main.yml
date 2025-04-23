@@ -1,0 +1,16 @@
+---
+# Default HAOS VM configuration variables
+vmid: "{{ lookup('pipe','pvesh get /cluster/nextid') | trim }}"
+hostname: "haos{{ haos_version }}"
+cores: 2
+ram: 4096          # in MiB
+disk_size: "32G"
+bridge: "vmbr0"
+cpu_type: "-cpu host"
+disk_cache: "cache=writethrough,"
+haos_version: "stable"
+haos_url: "https://github.com/home-assistant/operating-system/releases/download/{{ haos_version }}/haos_ova-{{ haos_version }}.qcow2.xz"
+start_vm: true
+dest_image: "haos_ova-{{ haos_version }}.qcow2"
+extracted_image: "haos_ova-{{ haos_version }}.qcow2"
+...

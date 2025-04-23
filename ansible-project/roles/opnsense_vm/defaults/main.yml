@@ -1,7 +1,7 @@
 ---
 opnsense_vm_id: "{{ lookup('pipe', 'pvesh get /cluster/nextid') | trim }}"
 opnsense_hostname: "OpnSense"
-opnsense_disk_size: "8G"
+opnsense_disk_size: "10G"
 opnsense_cpu_cores: 4
 opnsense_ram: 8192
 opnsense_storage: "local-lvm"
@@ -9,4 +9,4 @@ opnsense_bridge: "vmbr0"
 opnsense_network: ""
 opnsense_mac: "02:{{ 99999 | random(seed=inventory_hostname) | string | regex_replace('(..)', '\\1:') | regex_replace(':$', '') }}"
 opnsense_method: "default"
-opnsense_image_path: "/path/to/opnsense-disk-image.qcow2"
+opnsense_image_path: "https://download.freebsd.org/releases/VM-IMAGES/14.2-RELEASE/amd64/Latest/FreeBSD-14.2-RELEASE-amd64.qcow2.xz"

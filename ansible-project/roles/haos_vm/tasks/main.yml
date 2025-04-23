@@ -1,0 +1,114 @@
+---
+- name: "Ensure the play is run as root"
+  shell: |
+    [ "$(id -u)" -eq 0 ] || { echo "Please run as root"; exit 1; }
+  changed_when: false
+
+- name: "Check system architecture is amd64"
+  shell: |
+    arch=$(dpkg --print-architecture)
+    [ "$arch" = "amd64" ] || { echo "Unsupported architecture: $arch"; exit 1; }
+  changed_when: false
+
+- name: "Verify compatible Proxmox VE version"
+  shell: |
+    if ! pveversion | grep -Eq "pve-manager/8\.[1-4](\.[0-9]+)*"; then
+      echo "Unsupported Proxmox version"; exit 1;
+    fi
+  changed_when: false
+
+- name: "Generate a MAC address for HAOS VM"
+  shell: |
+    GEN_MAC="02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')"
+    echo $GEN_MAC
+  register: mac_output
+
+- name: "Set the MAC address fact"
+  set_fact:
+    mac: "{{ mac_output.stdout | trim }}"
+
+- name: "Display VM configuration"
+  debug:
+    msg: |
+      Using VMID: {{ vmid }}
+      Hostname: {{ hostname }}
+      CPU Cores: {{ cores }}
+      RAM: {{ ram }} MiB
+      Bridge: {{ bridge }}
+      MAC Address: {{ mac }}
+      Disk Size: {{ disk_size }}
+      HAOS Version: {{ haos_version }}
+
+- name: "Validate storage pools by listing available image storages"
+  shell: |
+    pvesm status -content images | awk 'NR>1'
+  register: storage_list
+
+- name: "Fail if no valid storage pools detected"
+  fail:
+    msg: "Unable to detect a valid storage location."
+  when: storage_list.stdout == ""
+
+- name: "Select storage pool (default to first entry)"
+  set_fact:
+    storage: "{{ (storage_list.stdout_lines[0] | regex_search('^(\\S+)')).group(1) }}"
+  when: storage_list.stdout != ""
+
+- name: "Download HAOS disk image"
+  shell: |
+    curl -f#SL -o "{{ dest_image }}" "{{ haos_url }}"
+  args:
+    chdir: /tmp
+
+- name: "Extract HAOS disk image"
+  shell: |
+    unxz -c "{{ dest_image }}" > "{{ extracted_image }}"
+  args:
+    chdir: /tmp
+
+- name: "Create HAOS VM"
+  shell: |
+    qm create {{ vmid }} -agent 1 -tablet 0 -localtime 1 -bios ovmf{{ cpu_type }} \
+      -cores {{ cores }} -memory {{ ram }} -name {{ hostname }} -tags "haos-vm" \
+      -net0 virtio,bridge={{ bridge }},macaddr={{ mac }},tag=Default -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
+  register: create_vm
+
+- name: "Allocate minimal disk space for boot sector"
+  shell: |
+    pvesm alloc {{ storage }} {{ vmid }} vm-{{ vmid }}-disk-0 4M
+  register: alloc_disk
+
+- name: "Import extracted HAOS disk image into the VM"
+  shell: |
+    qm importdisk {{ vmid }} /tmp/{{ extracted_image }} {{ storage }} -format qcow2
+  register: import_disk
+
+- name: "Configure HAOS VM with imported disk and description"
+  shell: |
+    qm set {{ vmid }} \
+      -efidisk0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-0,efitype=4m" \
+      -scsi0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-1,{{ disk_cache }}size={{ disk_size }}" \
+      -boot order=scsi0 \
+      -serial0 socket \
+      -description "<div align='center'>
+          <a href='https://Helper-Scripts.com' target='_blank' rel='noopener noreferrer'>
+            <img src='https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/images/logo-81x112.png' style='width:81px;height:112px;'/>
+          </a>
+          <h2>Home Assistant OS VM ({{ haos_version }})</h2>
+          </div>" 
+  register: configure_vm
+
+- name: "Resize disk if disk_size specified"
+  shell: |
+    qm resize {{ vmid }} scsi0 {{ disk_size }}
+  when: disk_size is defined
+
+- name: "Start HAOS VM if requested"
+  shell: |
+    qm start {{ vmid }}
+  when: start_vm | bool
+
+- name: "Display completion message"
+  debug:
+    msg: "Completed HAOS VM creation successfully. VMID {{ vmid }} is now running."
+...
