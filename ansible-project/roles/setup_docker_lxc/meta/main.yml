@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: setup_docker_lxc
+  author: Your Name # Please update!
+  description: Installs Docker Engine inside a Debian/Ubuntu based LXC container.
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - docker
+    - lxc
+    - container
+
+dependencies: [] # No hard role dependencies, relies on a configured LXC target

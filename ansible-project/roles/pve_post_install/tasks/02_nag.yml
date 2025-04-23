@@ -1,0 +1,19 @@
+---
+- name: Check if subscription nag removal script exists
+  ansible.builtin.stat:
+    path: /etc/apt/apt.conf.d/no-nag-script
+  register: nag_script_stat
+
+- name: Determine if nag removal should be applied
+  ansible.builtin.set_fact:
+    apply_nag_removal: "{{ disable_nag | bool and not nag_script_stat.stat.exists }}"
+
+- name: Apply subscription nag removal script
+  ansible.builtin.template:
+    src: no-nag-script.j2
+    dest: /etc/apt/apt.conf.d/no-nag-script
+    owner: root
+    group: root
+    mode: "0644"
+  when: apply_nag_removal
+  notify: Reinstall proxmox-widget-toolkit # Notify handler to apply change

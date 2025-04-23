@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: setup_jellyfin_lxc
+  author: Your Name # Please update!
+  description: Installs Jellyfin Media Server inside a Debian/Ubuntu based LXC container, with optional ffmpeg and Intel QSV setup.
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm # Jellyfin repo often targets specific releases
+        - bullseye
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+  galaxy_tags:
+    - jellyfin
+    - media
+    - server
+    - lxc
+    - container
+    - ffmpeg
+    - intel
+    - qsv
+    - vaapi
+
+dependencies: []

@@ -1,0 +1,7 @@
+---
+# handlers file for setup_jellyfin_lxc
+
+- name: restart jellyfin
+  ansible.builtin.systemd:
+    name: jellyfin
+    state: restarted

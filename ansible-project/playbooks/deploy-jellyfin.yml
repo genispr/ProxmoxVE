@@ -1,0 +1,49 @@
+---
+- name: Deploy Jellyfin in an LXC container
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    lxc_ip_fact_name: jellyfin_lxc_ip
+    lxc_hostname: jellyfin
+    lxc_password: asecurepassword
+    lxc_disk_size: 10G
+    lxc_network_config: net0: name=eth0,bridge=vmbr0,ip=dhcp
+    lxc_enable_dri_passthrough: true
+    proxmox_api_password: test
+    proxmox_node: pve
+
+    jellyfin_host: "{{ jellyfin_lxc_ip }}"
+    jellyfin_manage_web_package: true
+    jellyfin_install_ffmpeg: true
+    jellyfin_setup_intel_qsv: true
+    jellyfin_synchronize_timezone: true
+  
+  tasks:
+
+    - name: Create LXC Container for Jellyfin
+      include_role:
+        name: create_lxc_container
+
+    - name: Setup Jellyfin on the LXC Container
+      include_role:
+        name: setup_jellyfin_lxc
+      vars:
+        ansible_connection: lxc
+        ansible_user: root
+        ansible_host: "{{ jellyfin_host }}"
+        ansible_python_interpreter: /usr/bin/python3
+
+  handlers:
+    - name: restart jellyfin
+      ansible.builtin.systemd:
+        name: jellyfin
+        state: restarted
+      become: true
+
+inventory:
+  localhost:
+    hosts:
+      localhost:
+        ansible_connection: local
+        ansible_python_interpreter: /usr/bin/python3

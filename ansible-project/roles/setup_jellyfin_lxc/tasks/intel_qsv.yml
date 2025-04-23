@@ -1,0 +1,57 @@
+---
+# tasks file for Intel QSV setup (included from main.yml)
+
+- name: Add non-free component for Intel drivers (Debian)
+  ansible.builtin.apt_repository:
+    repo: "deb http://deb.debian.org/debian {{ ansible_distribution_release }} main contrib {{ debian_non_free_component }}"
+    state: present
+    filename: debian-non-free # Separate file to avoid conflicts
+  when: ansible_distribution == 'Debian'
+  register: non_free_repo_added
+
+# Need to update cache if non-free repo was just added
+- name: Update apt cache after adding non-free (Debian)
+  ansible.builtin.apt:
+    update_cache: yes
+  when:
+    - ansible_distribution == 'Debian'
+    - non_free_repo_added.changed
+
+- name: Determine Intel driver package name
+  ansible.builtin.set_fact:
+    intel_driver_package: "{{ 'intel-media-va-driver-non-free' if (ansible_distribution == 'Debian' and ansible_distribution_major_version | int < 12) else 'intel-media-va-driver' }}"
+
+- name: Install Intel VA-API driver and vainfo
+  ansible.builtin.apt:
+    name:
+      - "{{ intel_driver_package }}"
+      - vainfo
+    state: present
+
+# Add jellyfin user to the 'render' group to access /dev/dri
+- name: Ensure render group exists
+  ansible.builtin.group:
+    name: render
+    state: present
+
+- name: Add jellyfin user to render group
+  ansible.builtin.user:
+    name: "{{ jellyfin_user }}"
+    groups: render
+    append: yes
+  notify: restart jellyfin # Restart needed for group changes to take effect
+
+- name: Check vainfo output (informational)
+  ansible.builtin.command: vainfo
+  register: vainfo_check
+  changed_when: false
+  failed_when: false # Don't fail playbook if vainfo fails
+  check_mode: no # Always run this check if QSV setup is enabled
+
+- name: Display vainfo status
+  ansible.builtin.debug:
+    msg:
+      - "vainfo check exit code: {{ vainfo_check.rc }}"
+      - "vainfo stdout: {{ vainfo_check.stdout }}"
+      - "vainfo stderr: {{ vainfo_check.stderr }}"
+      - "Note: If vainfo fails, check /dev/dri passthrough from host and driver installation."

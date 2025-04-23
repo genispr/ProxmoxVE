@@ -1,0 +1,56 @@
+---
+# tasks file for setup_docker_lxc
+
+- name: Ensure prerequisites are installed (curl, gpg)
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gpg # Required by get-docker.sh for key verification
+    state: present
+    update_cache: true
+
+- name: Check if Docker is already installed
+  ansible.builtin.command: docker --version
+  register: docker_check
+  changed_when: false
+  failed_when: false # Don't fail if command doesn't exist
+  check_mode: false
+
+- name: Download get-docker.sh script
+  ansible.builtin.get_url:
+    url: https://get.docker.com
+    dest: /tmp/get-docker.sh
+    mode: '0755'
+  when: docker_check.rc != 0
+
+- name: Run get-docker.sh to install Docker Engine
+  ansible.builtin.command:
+    cmd: /tmp/get-docker.sh
+    creates: /usr/bin/docker # Script is idempotent, but checking creates avoids rerunning download/exec
+  changed_when: true # Assume running the script changes the system
+  when: docker_check.rc != 0
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Install Docker Compose V2 plugin (if enabled)
+  ansible.builtin.apt:
+    name: docker-compose-plugin
+    state: present
+  when: install_docker_compose_plugin
+
+# Optional: Add a user to the docker group (replace 'your_user' or manage via vars)
+# - name: Add user to docker group
+#   ansible.builtin.user:
+#     name: your_user # Pass this as a variable
+#     groups: docker
+#     append: yes
+#   when: docker_user is defined
+
+- name: Clean up get-docker.sh script
+  ansible.builtin.file:
+    path: /tmp/get-docker.sh
+    state: absent

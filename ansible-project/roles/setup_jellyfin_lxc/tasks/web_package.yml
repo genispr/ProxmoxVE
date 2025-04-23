@@ -1,0 +1,25 @@
+---
+# tasks file for jellyfin-web package management (included from main.yml)
+
+- name: Check if jellyfin-web package is already installed
+  ansible.builtin.apt:
+    name: jellyfin-web
+    state: present
+  check_mode: yes
+  changed_when: false
+  register: jellyfin_web_check
+
+- name: Install/Update jellyfin-web package
+  ansible.builtin.apt:
+    name: jellyfin-web
+    state: latest  # Use 'present' to avoid unnecessary updates if not needed
+  when: jellyfin_web_check.changed  # Install or Update if check shows it's not present or needs update
+
+- name: Ensure jellyfin web directory exists and has correct permissions
+  ansible.builtin.file:
+    path: /usr/share/jellyfin/web
+    state: directory
+    owner: "{{ jellyfin_user }}"
+    group: "{{ jellyfin_group }}"
+    mode: '0755'  # Adjust if needed, ensure read/execute for all
+  when: jellyfin_user is defined and jellyfin_group is defined

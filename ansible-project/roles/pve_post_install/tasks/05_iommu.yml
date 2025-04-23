@@ -1,0 +1,39 @@
+---
+# tasks file for enabling IOMMU (included from main.yml)
+
+- name: Check if IOMMU is already enabled in /proc/cmdline
+  ansible.builtin.command: cat /proc/cmdline
+  register: cmdline_output
+  changed_when: false
+  failed_when: false  # Don't fail if /proc/cmdline is unreadable
+
+- name: Determine CPU vendor (Intel or AMD)
+  ansible.builtin.shell: grep -q 'vendor_id\\t: GenuineIntel' /proc/cpuinfo && echo intel || echo amd
+  register: cpu_vendor
+  changed_when: false
+  failed_when: false  # Don't fail if /proc/cpuinfo is unreadable
+
+- name: Set IOMMU parameter based on CPU vendor
+  ansible.builtin.set_fact:
+    iommu_parameter: "{{ 'intel_iommu=on' if cpu_vendor.stdout == 'intel' else 'amd_iommu=on iommu=pt' }}"
+  when: cpu_vendor.rc == 0 and 'intel_iommu=on' not in cmdline_output.stdout and 'amd_iommu=on' not in cmdline_output.stdout
+  # Set the iommu_parameter based on CPU vendor (intel or amd) unless it is already enabled.
+
+- name: Modify GRUB configuration to enable IOMMU
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"$'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="\1 {{ iommu_parameter }}"'
+    backrefs: true
+  register: grub_config_modified
+  become: true
+  when: iommu_parameter is defined and not iommu_already_enabled
+  vars:
+    iommu_already_enabled: "'intel_iommu=on' in cmdline_output.stdout or 'amd_iommu=on' in cmdline_output.stdout"
+  # Modify the GRUB configuration to include the iommu_parameter if it's not already enabled.
+
+- name: Update GRUB configuration
+  ansible.builtin.command: update-grub
+  become: true
+  when: grub_config_modified.changed
+  # Update the GRUB configuration if it has been modified.

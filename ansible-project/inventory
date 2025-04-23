@@ -1,0 +1,5 @@
+ini
+[all]
+localhost ansible_connection=local
+[pve_nodes]
+your_proxmox_ip_or_hostname ansible_user=root # Or another user with sudo access

@@ -1,0 +1,88 @@
+---
+# Tasks for creating an LXC container
+
+- name: Check if LXC container {{ lxc_id }} already exists
+  ansible.builtin.command: pct status {{ lxc_id }}
+  register: lxc_status
+  changed_when: false
+  failed_when: false # Don't fail if it doesn't exist
+  check_mode: false # Always run this check
+
+- name: Create or Update LXC container {{ lxc_hostname }} ({{ lxc_id }})
+  community.general.proxmox_lxc:
+    vmid: "{{ lxc_id }}"
+    node: "{{ proxmox_node | default(ansible_hostname) }}"  # Assumes target node is the one running the playbook
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_password: "{{ proxmox_api_password }}"             # Needs to be provided securely (e.g., Vault)
+    validate_certs: "{{ proxmox_validate_certs }}"
+    hostname: "{{ lxc_hostname }}"
+    password: "{{ lxc_password }}"                         # Set root password (consider SSH keys)
+    ostemplate: "{{ lxc_os_template }}"
+    storage: "{{ lxc_storage }}"
+    cores: "{{ lxc_cores }}"
+    memory: "{{ lxc_memory }}"
+    swap: "{{ lxc_swap | default(lxc_memory) }}"
+    disk: "{{ lxc_disk_size }}"
+    netif: "{{ lxc_network_config }}"
+    features: "{{ lxc_features }}"
+    onboot: "{{ lxc_start_on_boot }}"
+    unprivileged: "{{ lxc_unprivileged }}"
+    state: present
+    # Force start only if it was newly created, otherwise rely on the next task
+    # start: "{{ true if lxc_status.rc != 0 else false }}"
+  register: pve_lxc_create_status
+  notify: Wait for container readiness
+  # when: lxc_status.rc != 0 # Condition removed to allow updates
+
+# Start container ensures it's running whether it was just created or already existed
+- name: Ensure LXC container {{ lxc_hostname }} is started
+  community.general.proxmox_lxc:
+    vmid: "{{ lxc_id }}"
+    node: "{{ proxmox_node | default(ansible_hostname) }}"
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_password: "{{ proxmox_api_password }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    state: started
+  register: pve_lxc_start_status
+  changed_when: pve_lxc_start_status.changed
+  notify: Wait for container readiness # Notify even if just starting an existing one
+
+# Proxmox API might not return the IP immediately, especially with DHCP.
+# Configure /dev/dri passthrough for hardware acceleration (if enabled)
+- name: Configure /dev/dri passthrough (hardware acceleration)
+  become: true
+  ansible.builtin.lineinfile:
+    path: "/etc/pve/lxc/{{ lxc_id }}.conf"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - regexp: "^lxc.cgroup2.devices.allow:.*c 226:128 rwm$"
+      line: "lxc.cgroup2.devices.allow: c 226:128 rwm"
+    - regexp: "^lxc.mount.entry:.* /dev/dri/card0 dev/dri/card0 none bind,optional,create=file$"
+      line: "lxc.mount.entry: /dev/dri/card0 dev/dri/card0 none bind,optional,create=file"
+    - regexp: "^lxc.mount.entry:.* /dev/dri/renderD128 dev/dri/renderD128 none bind,optional,create=file$"
+      line: "lxc.mount.entry: /dev/dri/renderD128 dev/dri/renderD128 none bind,optional,create=file"
+    - regexp: "^lxc.mount.entry:.* /dev/dri/by-path dev/dri/by-path none bind,optional$"
+      line: "lxc.mount.entry: /dev/dri/by-path dev/dri/by-path none bind,optional"
+  when: lxc_enable_dri_passthrough
+
+# Proxmox API might not return the IP immediately, especially with DHCP.
+# We explicitly fetch it.
+- name: Get LXC IP address
+  ansible.builtin.command:
+    cmd: "pct exec {{ lxc_id }} -- ip -4 -o addr show eth0 | awk '{print $4}' | cut -d/ -f1"
+  register: lxc_ip_raw
+  until: lxc_ip_raw.stdout is defined and lxc_ip_raw.stdout | length > 0 and lxc_ip_raw.rc == 0
+  retries: "{{ lxc_wait_for_ip_retries }}"
+  delay: "{{ lxc_wait_for_ip_delay }}"
+  changed_when: false
+  check_mode: false # This needs to run to get the IP
+  when: ansible_connection != 'lxc' # Avoid running inside the container itself if using lxc connection
+
+- name: Set LXC IP fact
+  ansible.builtin.set_fact:
+    "{{ lxc_ip_fact_name }}": "{{ lxc_ip_raw.stdout | trim }}"
+    cacheable: true # Make IP available to subsequent plays in the same run
+  when: lxc_ip_raw.stdout is defined and lxc_ip_raw.stdout | length > 0 and lxc_ip_raw.rc == 0

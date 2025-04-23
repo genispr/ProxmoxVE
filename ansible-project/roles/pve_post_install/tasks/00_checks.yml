@@ -1,0 +1,11 @@
+- name: Check Proxmox VE Version Compatibility
+  ansible.builtin.command: pveversion
+  register: pve_version_output
+  changed_when: false
+  check_mode: no # Always run this check
+
+- name: Fail if PVE version is not 8.x
+  ansible.builtin.fail:
+    msg: "This role requires Proxmox VE Version 8.0 or later. Found: {{ pve_version_output.stdout }}"
+  when: pve_version_output.stdout not in search('pve-manager/8\\.')
+  check_mode: no # Always run this check

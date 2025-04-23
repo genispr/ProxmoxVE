@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: create_lxc_container
+  author: Your Name # Please update!
+  description: An Ansible role to create LXC containers on Proxmox, optimized for hosting Docker.
+  license: MIT
+  min_ansible_version: 2.9 # community.general.proxmox_lxc needs >= 2.9
+  platforms:
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - proxmox
+    - lxc
+    - container
+    - docker
+
+collections:
+  - community.general # Required for proxmox_lxc module

@@ -1,0 +1,26 @@
+---
+# Variables for the post-pve-install role.
+# These can be overridden in playbooks or inventory.
+
+# --- Repository Configuration ---
+correct_sources: true             # Correct the main Debian package sources list and disable Bookworm firmware warning
+manage_proxmox_repos: true        # Manage Proxmox repositories (Enterprise and No-Subscription)
+include_non_free: false           # Include non-free components in Debian package sources
+ceph_version: squid               # Configure the Ceph version (e.g., Reef)
+correct_ceph_sources: true        # Configure the correct Ceph package repositories (e.g., Reef)
+add_test_repo: false              # Add the Proxmox test repository file (disabled by default)
+
+# --- Subscription Nag Management ---
+disable_subscription_nag: true    # Controls whether the nag removal tasks are attempted
+disable_nag: true                 # Controls whether the nag removal script is actually applied (if check passes)
+
+# --- High Availability (HA) Services ---
+manage_ha_services: true          # Manage the state of Proxmox HA services (pve-ha-lrm, pve-ha-crm, corosync)
+enable_ha: false                   # Control the state (enabled/started or disabled/stopped) of HA services if manage_ha_services is true
+
+# --- System Updates and Maintenance ---
+perform_update: true               # Run apt update and dist-upgrade to update the system
+perform_reboot: false              # Reboot the node after updates (use with caution in automation)
+
+# --- Hardware and Kernel Configuration ---
+enable_iommu: true                # Enable IOMMU for PCI passthrough (requires a reboot)

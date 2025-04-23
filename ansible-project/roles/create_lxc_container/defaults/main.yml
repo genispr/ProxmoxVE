@@ -1,0 +1,52 @@
+---
+# defaults file for create_lxc_container
+
+# LXC Container Settings
+lxc_id: 101
+lxc_hostname: mycontainer
+# WARNING: Default password is insecure. Use Ansible Vault or set a strong password per host/group.
+# Consider using SSH keys for access instead of passwords for better security.
+lxc_password: changeme
+# Example OS template (ensure this exists on your Proxmox node: run 'pveam available')
+# Find templates via 'pveam available --section system' or download via 'pveam download local debian-12-standard'
+lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
+lxc_storage: local # Storage pool for the container disk
+
+# LXC Resources
+lxc_cores: 2
+lxc_memory: 2048 # RAM in MB
+lxc_swap: 2048   # Swap in MB (defaults to memory size if not set in task)
+lxc_disk_size: 8G # Disk size (e.g., 8G, 100G)
+
+# LXC Network Configuration
+# Example Static IP configuration (CHANGE THESE VALUES)
+lxc_network_config:
+  net0: name=eth0,bridge=vmbr0,ip=192.168.1.100/24,gw=192.168.1.1
+# Example DHCP configuration (replace the above 'lxc_network_config' line):
+# lxc_network_config:
+#   net0: name=eth0,bridge=vmbr0,ip=dhcp
+
+# LXC Features (nesting and keyctl recommended for running Docker inside LXC)
+lxc_features:
+  nesting: 1
+  keyctl: 1
+
+# LXC Options
+lxc_start_on_boot: true
+lxc_unprivileged: true # Run as an unprivileged container (recommended)
+
+# Proxmox API Connection Details
+# WARNING: Avoid storing API passwords directly here in production. Use Ansible Vault or environment variables.
+proxmox_api_host: localhost
+proxmox_api_user: root@pam
+# proxmox_api_password: "YOUR_API_PASSWORD_OR_TOKEN_SECRET" # Provide this securely
+proxmox_validate_certs: false # Set to true if using valid HTTPS certs for Proxmox API
+
+# Wait Handler Settings
+lxc_wait_for_ip_retries: 15     # How many times to retry getting the IP
+lxc_wait_for_ip_delay: 5      # Delay between IP fetch retries (seconds)
+lxc_wait_timeout: 300         # Max time to wait for SSH readiness (seconds)
+lxc_ip_fact_name: "lxc_{{ lxc_id }}_ip" # Fact name to store the fetched IP
+
+# Enable /dev/dri passthrough for hardware acceleration (e.g., for Jellyfin)
+lxc_enable_dri_passthrough: false

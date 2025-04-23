@@ -1,0 +1,45 @@
+---
+- name: Configure Debian Sources (/etc/apt/sources.list)
+  ansible.builtin.template:
+    src: "sources.list.j2"
+    dest: "/etc/apt/sources.list"
+    owner: root
+    group: root
+    mode: "0644"
+  when: correct_sources
+
+- name: Disable Bookworm non-free firmware warning
+  ansible.builtin.template:
+    src: "no-bookworm-firmware.conf.j2"
+    dest: "/etc/apt/apt.conf.d/no-bookworm-firmware.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  when: correct_sources
+
+- name: Manage Proxmox Repositories (Enterprise and No-Subscription)
+  ansible.builtin.template:
+    src: "proxmox_repos.list.j2"
+    dest: "/etc/apt/sources.list.d/pve-no-subscription.list"
+    owner: root
+    group: root
+    mode: "0644"
+  when: manage_proxmox_repos
+
+- name: Correct 'ceph package repositories'
+  ansible.builtin.template:
+    src: "ceph.list.j2"
+    dest: "/etc/apt/sources.list.d/ceph.list"
+    owner: root
+    group: root
+    mode: "0644"
+  when: correct_ceph_sources
+
+- name: Add (Disabled) 'pvetest' repository
+  ansible.builtin.template:
+    src: "pvetest-for-beta.list.j2"
+    dest: "/etc/apt/sources.list.d/pvetest-for-beta.list"
+    owner: root
+    group: root
+    mode: "0644"
+  when: add_test_repo

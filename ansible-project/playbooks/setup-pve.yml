@@ -1,0 +1,7 @@
+---
+- name: Setup Proxmox VE Host after install
+  hosts: all
+  become: true
+  
+  roles:
+    - role: pve_post_install

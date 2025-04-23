@@ -1,0 +1,47 @@
+---
+# This file orchestrates the post-pve-install role by including task files.
+
+- name: Gather OS specific variables (like ansible_distribution_release)
+  ansible.builtin.setup:
+    filter: ansible_distribution*
+  tags: [always]
+
+- name: Import default variables
+  ansible.builtin.include_vars:
+    file: defaults/main.yml
+  tags: [always]
+
+- name: Import custom variables (overrides)
+  ansible.builtin.include_vars:
+    file: vars/main.yml
+  tags: [always]
+
+- name: Run Initial Checks
+  ansible.builtin.include_tasks: 00_checks.yml
+  tags: [always, checks] # Apply relevant tags to the include
+
+- name: Configure APT Sources and Repositories
+  ansible.builtin.include_tasks: 01_repositories.yml
+  tags: [always, repos, apt_config] # Apply relevant tags to the include
+
+- name: Disable Proxmox Subscription Nag
+  ansible.builtin.include_tasks: 02_nag.yml
+  tags: [always, nag, pve_nag] # Apply relevant tags to the include
+  when: disable_subscription_nag # Control inclusion based on the main flag
+
+- name: Manage High Availability Services
+  ansible.builtin.include_tasks: 03_ha_services.yml
+  tags: [always, ha, services] # Apply relevant tags to the include
+  when: manage_ha_services # Control inclusion based on the main flag
+
+- name: Update Proxmox VE System
+  ansible.builtin.include_tasks: 04_system_update.yml
+  tags: [always, update, system_update] # Apply relevant tags to the include
+  when: perform_update # Control inclusion based on the main flag
+
+- name: Enable IOMMU if requested
+  ansible.builtin.include_tasks: 05_iommu.yml
+  when: enable_iommu | bool
+
+- name: Reboot Proxmox VE Node (if required)
+  ansible.builtin.include_tasks: 06_reboot.yml

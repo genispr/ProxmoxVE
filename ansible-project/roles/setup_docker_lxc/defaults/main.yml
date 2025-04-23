@@ -1,0 +1,5 @@
+---
+# defaults file for setup_docker_lxc
+
+# Install Docker Compose V2 plugin (docker-compose-plugin)
+install_docker_compose_plugin: true

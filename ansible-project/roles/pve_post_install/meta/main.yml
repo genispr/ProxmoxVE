@@ -1,0 +1,21 @@
+galaxy_info:
+  role_name: post_pve_install
+  author: Your Name / Organization Name # Please update this
+  description: Performs common post-installation tasks for Proxmox VE 8.x.
+  license: MIT # Or your chosen license
+  min_ansible_version: '2.10' # Requires ansible.builtin modules, good baseline
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm # Proxmox VE 8.x is based on Debian Bookworm
+
+  galaxy_tags:
+    - proxmox
+    - pve
+    - virtualization
+    - debian
+    - system
+    - configuration
+
+dependencies: [] # No known external role dependencies

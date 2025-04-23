@@ -1,0 +1,78 @@
+---
+# tasks file for setup_jellyfin_lxc
+
+- name: Ensure prerequisites are installed (apt-transport-https, gpg, sudo)
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - gpg
+      - sudo # Ensure sudo is present
+    state: present
+    update_cache: yes
+
+- name: Install mc (Midnight Commander) if requested
+  ansible.builtin.apt:
+    name: mc
+    state: present
+  when: jellyfin_install_mc
+
+- name: Add Jellyfin APT GPG key
+  ansible.builtin.apt_key:
+    url: "{{ jellyfin_apt_key_url }}"
+    keyring: /etc/apt/trusted.gpg.d/jellyfin.gpg
+    state: present
+
+- name: Add Jellyfin APT repository
+  ansible.builtin.apt_repository:
+    repo: deb [arch=amd64] {{ jellyfin_apt_repo_url }} {{ jellyfin_apt_repo_suite }} {{ jellyfin_apt_repo_component }}
+    filename: jellyfin
+    state: present
+    update_cache: yes
+  register: apt_repo_added
+
+- name: Install ffmpeg if requested
+  ansible.builtin.apt:
+    name: ffmpeg
+    state: present
+  when: jellyfin_install_ffmpeg
+
+# --- Optional: Intel QSV Setup ---
+
+# --- Optional: Timezone Sync ---
+- name: Include timezone sync tasks
+  ansible.builtin.include_tasks: timezone.yml
+  when: jellyfin_synchronize_timezone
+# --- End Optional: Timezone Sync ---
+
+
+
+# --- Optional: Intel QSV Setup ---
+- name: Include Intel QSV tasks
+  ansible.builtin.include_tasks: intel_qsv.yml
+  when: jellyfin_setup_intel_qsv
+# --- End Optional: Intel QSV Setup ---
+
+- name: Install Jellyfin package
+  ansible.builtin.apt:
+    name: "jellyfin{{ '=' + jellyfin_package_version if jellyfin_package_version != 'latest' else '' }}"
+    state: "{{ 'present' if jellyfin_package_version == 'latest' else 'present' }}"
+    update_cache: "{{ true if apt_repo_added.changed else false }}"
+  notify: restart jellyfin
+
+- name: Ensure Jellyfin service is started and enabled
+  ansible.builtin.systemd:
+    name: jellyfin
+    state: started
+    enabled: true
+
+# --- Optional: Jellyfin Web Package Management ---
+- name: Include Jellyfin web package management tasks
+  ansible.builtin.include_tasks: web_package.yml
+  when: jellyfin_manage_web_package
+# --- End Optional: Jellyfin Web Package Management ---
+
+# If neither timezone sync nor web package management are enabled, print a message
+# - name: Inform user about disabled optional features
+#   ansible.builtin.debug:
+#     msg: "Neither timezone synchronization nor explicit jellyfin-web package management are enabled. Skipping these features."
+#   when: not jellyfin_synchronize_timezone and not jellyfin_manage_web_package
