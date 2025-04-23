@@ -5,7 +5,7 @@
 # --- Repository Configuration ---
 correct_sources: true             # Correct the main Debian package sources list and disable Bookworm firmware warning
 manage_proxmox_repos: true        # Manage Proxmox repositories (Enterprise and No-Subscription)
-include_non_free: false           # Include non-free components in Debian package sources
+include_non_free: true            # Include non-free components in Debian package sources
 ceph_version: squid               # Configure the Ceph version (e.g., Reef)
 correct_ceph_sources: true        # Configure the correct Ceph package repositories (e.g., Reef)
 add_test_repo: false              # Add the Proxmox test repository file (disabled by default)
@@ -15,7 +15,7 @@ disable_subscription_nag: true    # Controls whether the nag removal tasks are a
 disable_nag: true                 # Controls whether the nag removal script is actually applied (if check passes)
 
 # --- High Availability (HA) Services ---
-manage_ha_services: true          # Manage the state of Proxmox HA services (pve-ha-lrm, pve-ha-crm, corosync)
+manage_ha_services: true           # Manage the state of Proxmox HA services (pve-ha-lrm, pve-ha-crm, corosync)
 enable_ha: false                   # Control the state (enabled/started or disabled/stopped) of HA services if manage_ha_services is true
 
 # --- System Updates and Maintenance ---

@@ -1,12 +1,33 @@
 ---
+# Unique identifier for the OpnSense VM generated dynamically.
 opnsense_vm_id: "{{ lookup('pipe', 'pvesh get /cluster/nextid') | trim }}"
+
+# Hostname for the OpnSense VM.
 opnsense_hostname: "OpnSense"
+
+# Disk size allocated to the OpnSense VM.
 opnsense_disk_size: "10G"
+
+# Number of CPU cores assigned to the OpnSense VM.
 opnsense_cpu_cores: 4
+
+# Amount of RAM (in MB) allocated to the OpnSense VM.
 opnsense_ram: 8192
+
+# Storage pool where the VM disk resides.
 opnsense_storage: "local-lvm"
+
+# Network bridge used by the VM.
 opnsense_bridge: "vmbr0"
+
+# Network configuration details for the VM (if any).
 opnsense_network: ""
+
+# MAC address generated for the VM.
 opnsense_mac: "02:{{ 99999 | random(seed=inventory_hostname) | string | regex_replace('(..)', '\\1:') | regex_replace(':$', '') }}"
+
+# Deployment method used for OpnSense.
 opnsense_method: "default"
+
+# URL for the OpnSense VM image.
 opnsense_image_path: "https://download.freebsd.org/releases/VM-IMAGES/14.2-RELEASE/amd64/Latest/FreeBSD-14.2-RELEASE-amd64.qcow2.xz"

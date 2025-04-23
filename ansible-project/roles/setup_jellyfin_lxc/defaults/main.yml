@@ -1,33 +1,35 @@
 ---
 # defaults file for setup_jellyfin_lxc
 
+# Jellyfin APT key URL
 jellyfin_apt_key_url: https://repo.jellyfin.org/jellyfin_team.gpg.key
+# Jellyfin APT repository URL based on distribution
 jellyfin_apt_repo_url: https://repo.jellyfin.org/{{ ansible_distribution | lower }}
+# Suite determined from distribution release
 jellyfin_apt_repo_suite: "{{ ansible_distribution_release | lower }}"
+# APT repository component
 jellyfin_apt_repo_component: main
-jellyfin_package_version: latest # Pin to a specific version if needed, e.g., "10.8.10"
+# Package version (pin if necessary, e.g., "10.8.10")
+jellyfin_package_version: latest
 
 # User and group under which Jellyfin runs (managed by the package)
+# Jellyfin service user
 jellyfin_user: jellyfin
+# Jellyfin service group
 jellyfin_group: jellyfin
 
 # --- Feature Flags ---
 
 # Install ffmpeg package (highly recommended)
 jellyfin_install_ffmpeg: true
-
-# Install mc (Midnight Commander file manager - convenience)
+# Install Midnight Commander (convenience)
 jellyfin_install_mc: false
-
-# Attempt to set up Intel Quick Sync Video (QSV) hardware acceleration
-# Requires host device passthrough (/dev/dri) configured in LXC settings (e.g., via create_lxc_container role)
+# Setup Intel Quick Sync Video (requires /dev/dri passthrough)
 jellyfin_setup_intel_qsv: true
-
-# APT component needed for non-free Intel drivers on Debian
-# Debian < 12 typically uses 'non-free'. Debian >= 12 uses 'non-free-firmware'
+# APT component for non‑free Intel drivers (Debian specifics)
 debian_non_free_component: "{{ 'non-free-firmware' if (ansible_distribution == 'Debian' and ansible_distribution_major_version | int >= 12) else 'non-free' }}"
 
 # --- Additional Options ---
 
-# Timezone synchronization
+# Timezone synchronization flag
 jellyfin_synchronize_timezone: true
