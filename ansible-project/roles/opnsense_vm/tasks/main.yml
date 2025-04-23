@@ -9,15 +9,21 @@
     -ostype l26
   register: create_vm
   changed_when: "'created' in create_vm.stdout"
+  failed_when: create_vm.rc != 0
 
 - name: "Allocate disk for Opnsense VM"
   command: >
     pvesm alloc {{ opnsense_storage }} {{ opnsense_vm_id }} vm-{{ opnsense_vm_id }}-disk-0 4M
+  register: alloc_disk
+  changed_when: alloc_disk.rc == 0
+  failed_when: alloc_disk.rc != 0
 
 - name: "Import disk for Opnsense VM"
   command: >
-    qm importdisk {{ opnsense_vm_id }} /path/to/opnsense-disk-image.qcow2 {{ opnsense_storage }} -format qcow2
-  # Adjust the path to the OPNsense image as needed
+    qm importdisk {{ opnsense_vm_id }} {{ opnsense_image_path }} {{ opnsense_storage }} -format qcow2
+  register: import_disk
+  changed_when: import_disk.rc == 0
+  failed_when: import_disk.rc != 0
 
 - name: "Set VM configuration"
   command: >
@@ -25,6 +31,12 @@
     -efidisk0 {{ opnsense_storage }}:vm-{{ opnsense_vm_id }}-disk-0,efitype=4m
     -boot order=scsi0
     -onboot 1
+  register: set_vm
+  changed_when: set_vm.rc == 0
+  failed_when: set_vm.rc != 0
 
 - name: "Start Opnsense VM"
   command: qm start {{ opnsense_vm_id }}
+  register: start_vm
+  changed_when: "'started' in start_vm.stdout or start_vm.rc == 0"
+  failed_when: start_vm.rc != 0
