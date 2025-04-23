@@ -35,6 +35,16 @@ This role creates or updates LXC containers on Proxmox Virtual Environment (PVE)
 
 Refer to `defaults/main.yml` for a complete list of configurable variables.
 
+### Important Variables
+- lxc_id: Container ID.
+- lxc_hostname: Container hostname.
+- lxc_os_template: OS template in the format "storage:template".
+- lxc_cores: Number of CPU cores.
+- lxc_memory: Memory in MB.
+- lxc_disk_size: Disk size (e.g., 50G).
+- lxc_network_config: Network configuration for the container.
+- lxc_password: Root password (use Ansible Vault for production).
+
 ## Example Playbook
 
 ```yaml
@@ -79,6 +89,33 @@ Refer to `defaults/main.yml` for a complete list of configurable variables.
 #     - role: setup_docker
 #     - role: deploy_my_app
 ```
+
+## Usage
+
+Include this role in your playbook and pass the required variables. For example:
+```yaml
+- hosts: your_proxmox_node
+  become: no
+  gather_facts: no
+  roles:
+    - role: create_lxc_container
+      vars:
+        lxc_id: 201
+        lxc_hostname: docker-host-01
+        lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
+        lxc_cores: 4
+        lxc_memory: 4096
+        lxc_disk_size: 50G
+        lxc_network_config:
+          net0: name=eth0,bridge=vmbr0,ip=192.168.1.201/24,gw=192.168.1.1
+        # lxc_password: "YOUR_SECURE_PASSWORD" # Use Vault in production
+```
+
+## Troubleshooting
+
+- Verify the OS template exists on the Proxmox node.
+- Validate the network configuration and API credentials.
+- For Docker inside LXC, note that unprivileged containers may require additional configuration adjustments.
 
 ## License
 

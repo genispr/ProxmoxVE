@@ -18,6 +18,10 @@ prowlarr_image: "ghcr.io/linuxserver/prowlarr:latest"
 prowlarr_port: "9696:9696"
 prowlarr_config: "/docker/prowlarr/config"
 
+# Ensure ARR apps can locate Prowlarr (used by Recyclarr and ARR apps communication)
+prowlarr_host: "192.168.1.101"      # Replace with the actual Prowlarr host IP
+prowlarr_port: "{{ prowlarr_port | default('9696:9696') }}"
+
 sonarr_image: "ghcr.io/linuxserver/sonarr:latest"
 sonarr_port: "8989:8989"
 sonarr_config: "/docker/sonarr/config"
@@ -41,3 +45,7 @@ readarr_config: "/docker/readarr/config"
 recyclarr_image: "ghcr.io/linuxserver/recyclarr:latest"
 recyclarr_port: "7879:7879"
 recyclarr_config: "/docker/recyclarr/config"
+
+# New qbitorrent defaults (installed in a separate LXC container)
+qbitorrent_host: "192.168.1.100"    # Replace with the actual IP of the qbitorrent LXC
+qbitorrent_port: "8080"

@@ -26,16 +26,28 @@
   template:
     src: "templates/bazarr_config.j2"
     dest: "/etc/bazarr/config.conf"
-  when: bazarr_enabled | default(false)
+  when: bazarr_enabled
 
 - name: "Configure Readarr"
   template:
     src: "templates/readarr_config.j2"
     dest: "/etc/readarr/config.conf"
-  when: readarr_enabled | default(false)
+  when: readarr_enabled
 
 - name: "Configure Recyclarr"
   template:
     src: "templates/recyclarr_config.j2"
     dest: "/etc/recyclarr/config.conf"
-  when: recyclarr_enabled | default(false)
+  when: recyclarr_enabled
+
+- name: Locate QBittorrent LXC file
+  ansible.builtin.find:
+    paths: "/etc/arr_apps"
+    patterns: "qbitorrent*lxc"
+    file_type: file
+  register: qbitorrent_files
+
+- name: "Configure QBittorrent for ARR apps"
+  template:
+    src: "templates/qbitorrent_config.j2"
+    dest: "{{ qbitorrent_files.files[0].path if qbitorrent_files.matched > 0 else '/etc/arr_apps/qbitorrent.conf' }}"
