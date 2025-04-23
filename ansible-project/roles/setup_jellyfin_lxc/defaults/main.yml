@@ -28,8 +28,3 @@ jellyfin_install_mc: false
 jellyfin_setup_intel_qsv: true
 # APT component for non‑free Intel drivers (Debian specifics)
 debian_non_free_component: "{{ 'non-free-firmware' if (ansible_distribution == 'Debian' and ansible_distribution_major_version | int >= 12) else 'non-free' }}"
-
-# --- Additional Options ---
-
-# Timezone synchronization flag
-jellyfin_synchronize_timezone: true

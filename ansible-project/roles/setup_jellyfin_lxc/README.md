@@ -28,7 +28,6 @@ Refer to `defaults/main.yml` for variable details. Key variables include:
 - `jellyfin_install_mc`: (Default: `false`) Toggle installation of Midnight Commander.
 - `jellyfin_setup_intel_qsv`: (Default: `false`) Enable optional Intel QSV acceleration.
 - `jellyfin_package_version`: (Default: `latest`) Install the latest Jellyfin release or a specific version.
-- `jellyfin_synchronize_timezone`: (Default: `false`) Sync container timezone with the host.
 - `jellyfin_manage_web_package`: (Default: `false`) Manage the Jellyfin web package explicitly.
 
 ## Dependencies
