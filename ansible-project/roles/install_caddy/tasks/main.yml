@@ -11,6 +11,7 @@
   ansible.builtin.apt_repository:
     repo: "deb [trusted=yes] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main"
     state: present
+    update_cache: yes    # Ensure cache update after adding repo
   when: ansible_os_family == 'Debian'
 
 - name: Install Caddy package
@@ -25,7 +26,7 @@
     owner: root
     group: root
     mode: '0644'
-  notify: Reload Caddy
+  notify: Reload Caddy    # Handler to reload Caddy after config changes
 
 - name: Ensure Caddy service is running
   ansible.builtin.service:

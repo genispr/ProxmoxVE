@@ -35,6 +35,15 @@
         ansible_host: "{{ jellyfin_host }}"
         ansible_python_interpreter: /usr/bin/python3
 
+    - name: Register Jellyfin container in Caddy
+      include_role:
+        name: install_caddy
+      vars:
+        caddy_proxies:
+          - hostname: "{{ lxc_hostname }}"
+            ip: "{{ jellyfin_lxc_ip }}"
+            port: 8096
+
   handlers:
     - name: restart jellyfin
       ansible.builtin.systemd:

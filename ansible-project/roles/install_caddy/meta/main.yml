@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: install_caddy
   author: your name
-  description: "Installs and configures Caddy for reverse proxying LXC containers."
+  description: "Installs and configures Caddy as a reverse proxy for LXC containers. Supports dynamic proxy routing via a configurable list (caddy_proxies)."
   license: MIT
   min_ansible_version: "2.9"
   platforms:

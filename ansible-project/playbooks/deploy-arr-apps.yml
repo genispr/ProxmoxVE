@@ -29,3 +29,30 @@
         ansible_user: root
         ansible_host: "{{ arr_apps_host }}"
         ansible_python_interpreter: /usr/bin/python3
+
+    - name: Register ARR Apps individually in Caddy
+      include_role:
+        name: install_caddy
+      vars:
+        caddy_proxies:
+          - hostname: "prowlarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 9696
+          - hostname: "sonarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 8989
+          - hostname: "radarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 7878
+          - hostname: "lidarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 8686
+          - hostname: "bazarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 6767
+          - hostname: "readarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 8787
+          - hostname: "recyclarr.arr-apps"
+            ip: "{{ arr_apps_lxc_ip }}"
+            port: 7879

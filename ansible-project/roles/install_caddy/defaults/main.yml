@@ -1,5 +1,9 @@
 ---
 # Default variables for the install_caddy role
 
+# Suffix appended to hostnames for forming domain names.
 caddy_domain_suffix: ".local"
+
+# List of proxy definitions used to dynamically configure reverse proxying.
+# Each element should be an object with: hostname, ip, and port.
 caddy_proxies: []  # Example: [{ hostname: "container1", ip: "192.168.1.10", port: 80 }]
