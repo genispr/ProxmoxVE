@@ -1,4 +1,5 @@
 # This file should be encrypted with ansible-vault in production
-vault_admin_token: "replace_with_actual_token"
-proxmox_api_password: "replace_with_actual_proxmox_password"
+vaultwarden_admin_token: "replace_with_actual_vaultwarden_admin_token"
+proxmox_api_password: "replace_with_actual_proxmox_api_password"
+lxc_container_password: "replace_with_actual_lxc_container_password"
 # ...additional secret variables as needed...

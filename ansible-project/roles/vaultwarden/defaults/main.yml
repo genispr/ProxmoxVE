@@ -1,5 +1,5 @@
 # Default variables for the Vaultwarden role.
-admin_token: ""
+admin_token: "{{ vaultwarden_admin_token }}"
 database_url: "sqlite:///opt/vaultwarden/data/vaultwarden.db"
 vaultwarden_install_path: "/opt/vaultwarden"
 vaultwarden_user: "vaultwarden"

@@ -6,7 +6,7 @@ lxc_id: 101
 lxc_hostname: mycontainer
 # WARNING: Default password is insecure. Use Ansible Vault or set a strong password per host/group.
 # Consider using SSH keys for access instead of passwords for better security.
-lxc_password: changeme
+lxc_password: "{{ lxc_container_password }}"
 # Example OS template (ensure this exists on your Proxmox node: run 'pveam available')
 # Find templates via 'pveam available --section system' or download via 'pveam download local debian-12-standard'
 lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
@@ -34,6 +34,9 @@ lxc_features:
 # LXC Options
 lxc_start_on_boot: true
 lxc_unprivileged: true # Run as an unprivileged container (recommended)
+
+# Add SSH key variable for container access (set this to your public key)
+lxc_ssh_public_key: ""  # e.g., "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."
 
 # Proxmox API Connection Details
 # WARNING: Avoid storing API passwords directly here in production. Use Ansible Vault or environment variables.

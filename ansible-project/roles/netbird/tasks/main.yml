@@ -1,0 +1,37 @@
+- name: Ensure container config allows NetBird if netbird_ctid is provided
+  blockinfile:
+    path: "/etc/pve/lxc/{{ netbird_ctid }}.conf"
+    marker: "# {mark} NETBIRD CONFIGURATION"
+    block: |
+      lxc.cgroup2.devices.allow: c 10:200 rwm
+      lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file
+  when: netbird_ctid is defined
+
+- name: Install required packages for NetBird
+  apt:
+    name:
+      - ca-certificates
+      - gpg
+    state: present
+    update_cache: yes
+
+- name: Add NetBird apt repository key
+  apt_key:
+    url: "https://pkgs.netbird.io/debian/public.key"
+    state: present
+    keyring: "/usr/share/keyrings/netbird-archive-keyring.gpg"
+
+- name: Add NetBird apt repository
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/netbird-archive-keyring.gpg] https://pkgs.netbird.io/debian stable main"
+    filename: "netbird"
+    state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install NetBird UI package
+  apt:
+    name: netbird-ui
+    state: present

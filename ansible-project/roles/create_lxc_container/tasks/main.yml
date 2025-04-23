@@ -49,6 +49,20 @@
   changed_when: pve_lxc_start_status.changed
   notify: Wait for container readiness # Notify even if just starting an existing one
 
+# Configure SSH key based access and disable password authentication
+- name: Configure SSH keys for container access
+  become: true
+  ansible.builtin.command: >
+    pct exec {{ lxc_id }} -- bash -c "mkdir -p /root/.ssh && echo '{{ lxc_ssh_public_key }}' > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys"
+  when: lxc_ssh_public_key is defined and lxc_ssh_public_key != ""
+
+- name: Disable password SSH authentication
+  become: true
+  ansible.builtin.command: >
+    pct exec {{ lxc_id }} -- bash -c "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config &&
+    (systemctl restart sshd || service ssh restart)"
+  when: lxc_ssh_public_key is defined and lxc_ssh_public_key != ""
+
 # Proxmox API might not return the IP immediately, especially with DHCP.
 # Configure /dev/dri passthrough for hardware acceleration (if enabled)
 - name: Configure /dev/dri passthrough (hardware acceleration)
