@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: setup_arr_apps    # renamed from setup_media_apps
-  author: Your Name    # update as needed
+  author: GenisPR
   description: >
     Creates an LXC container via the create_lxc_container role,
     installs Docker via the setup_docker_lxc role, and deploys media aggregation apps:

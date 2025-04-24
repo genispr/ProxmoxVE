@@ -1,5 +1,5 @@
 galaxy_info:
-  author: "Your Name"
+  author: GenisPR
   description: "Installs and configures NetBird UI in a Proxmox LXC container."
   company: ""
   license: MIT

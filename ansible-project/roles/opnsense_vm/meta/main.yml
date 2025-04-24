@@ -1,6 +1,6 @@
 galaxy_info:
   role_name: opnsense_vm
-  author: Your Name  # Replace with actual author details
+  author: GenisPR
   description: >
     An Ansible role to create and configure an OpnSense VM on Proxmox VE.
   license: MIT

@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: create_lxc_container
-  author: Your Name  # Replace with the actual author
+  author: GenisPR
   description: >
 An Ansible role to create and update LXC containers on Proxmox VE,
 optimized for hosting Docker and other containerized applications.
