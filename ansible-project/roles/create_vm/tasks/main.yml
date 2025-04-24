@@ -1,0 +1,40 @@
+- name: "Create VM"
+  shell: |
+    qm create {{ vmid }} -agent 1 -tablet 0 -localtime 1 -bios ovmf{{ cpu_type }} \
+      -cores {{ cores }} -memory {{ ram }} -name {{ hostname }} -tags "{{ vm_tags | default('haos-vm') }}" \
+      -net0 {{ net0_config | default('virtio,bridge=' ~ bridge ~ ',macaddr=' ~ mac ~ ',tag=Default') }} -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
+  register: create_vm
+
+- name: "Allocate minimal disk space for boot sector"
+  shell: |
+    pvesm alloc {{ storage }} {{ vmid }} vm-{{ vmid }}-disk-0 4M
+  register: alloc_disk
+
+- name: "Import disk image into the VM"
+  shell: |
+    qm importdisk {{ vmid }} /tmp/{{ extracted_image }} {{ storage }} -format qcow2
+  register: import_disk
+
+- name: "Configure VM with imported disk and description"
+  shell: |
+    qm set {{ vmid }} \
+      -efidisk0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-0,efitype=4m" \
+      -scsi0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-1,{{ disk_cache }}size={{ disk_size }}" \
+      -boot order=scsi0 \
+      -serial0 socket \
+      -description "{{ vm_description | default('<div align=\'center\'>\n  <h2>VM ({{ haos_version | default(\'\') }})</h2>\n</div>') }}"
+  register: configure_vm
+
+- name: "Resize disk if disk_size specified"
+  shell: |
+    qm resize {{ vmid }} scsi0 {{ disk_size }}
+  when: disk_size is defined
+
+- name: "Start VM if requested"
+  shell: |
+    qm start {{ vmid }}
+  when: start_vm | bool
+
+- name: "Display VM creation completion message"
+  debug:
+    msg: "Completed VM creation successfully. VMID {{ vmid }} is now running."
