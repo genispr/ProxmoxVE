@@ -1,0 +1,14 @@
+---
+docker_get_script_url: "https://get.docker.com"
+docker_daemon_config: |
+  {
+    "log-driver": "journald"
+  }
+install_docker_compose: true
+docker_compose_version: "v2.20.1"   # adjust version as needed
+install_portainer: false
+portainer_image: "ghcr.io/linuxserver/portainer-ce:latest"
+portainer_ports:
+  - "8000:8000"
+  - "9443:9443"
+...

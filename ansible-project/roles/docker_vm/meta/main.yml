@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: docker_vm
+  author: "Your Name"
+  description: "Installs and configures Docker Engine in a virtual machine, with optional Docker Compose and Portainer support."
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+dependencies: []
+...

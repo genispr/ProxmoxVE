@@ -1,0 +1,67 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install prerequisites
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Download Docker install script
+  get_url:
+    url: "{{ docker_get_script_url }}"
+    dest: /tmp/get-docker.sh
+    mode: '0755'
+  when: (lookup('ansible.builtin.command', 'docker --version', errors='ignore')).rc != 0
+
+- name: Run Docker install script
+  command: sh /tmp/get-docker.sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Create /etc/docker directory
+  file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+
+- name: Configure Docker daemon
+  copy:
+    content: "{{ docker_daemon_config }}"
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+  notify: Restart Docker
+
+- name: Install Docker Compose plugin
+  when: install_docker_compose
+  block:
+    - name: Download Docker Compose plugin
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/lib/docker/cli-plugins/docker-compose
+        mode: '0755'
+      register: compose_download
+
+- name: Deploy Portainer container if enabled
+  when: install_portainer
+  community.docker.docker_container:
+    name: portainer
+    image: "{{ portainer_image }}"
+    state: started
+    restart_policy: always
+    published_ports: "{{ portainer_ports }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+- name: Clean up Docker install script
+  file:
+    path: /tmp/get-docker.sh
+    state: absent
+...
