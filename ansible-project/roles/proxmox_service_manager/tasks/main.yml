@@ -1,0 +1,95 @@
+---
+# =============================================================================
+# Proxmox Service Manager Role Tasks
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Service Dependencies
+# -----------------------------------------------------------------------------
+- name: Install service dependencies
+  ansible.builtin.apt:
+    name: "{{ service_dependencies }}"
+    state: present
+    update_cache: true
+  when: service_dependencies is defined
+  tags: ['service', 'dependencies']
+
+# -----------------------------------------------------------------------------
+# Service Installation
+# -----------------------------------------------------------------------------
+- name: Add service repository key
+  ansible.builtin.apt_key:
+    url: "{{ service_repo_key_url }}"
+    state: present
+  when: service_repo_key_url is defined
+  tags: ['service', 'repository']
+
+- name: Add service repository
+  ansible.builtin.apt_repository:
+    repo: "{{ service_repo_url }}"
+    state: present
+    filename: "{{ service_name }}"
+  when: service_repo_url is defined and service_name is defined
+  tags: ['service', 'repository']
+
+- name: Install service package
+  ansible.builtin.apt:
+    name: "{{ service_package }}"
+    state: "{{ service_package_state | default('present') }}"
+    update_cache: true
+  when: service_package is defined
+  tags: ['service', 'install']
+
+# -----------------------------------------------------------------------------
+# Service Configuration
+# -----------------------------------------------------------------------------
+- name: Create service configuration directory
+  ansible.builtin.file:
+    path: "{{ service_config_dir }}"
+    state: directory
+    owner: "{{ service_user | default('root') }}"
+    group: "{{ service_group | default('root') }}"
+    mode: "0755"
+  when: service_config_dir is defined
+  tags: ['service', 'config']
+
+- name: Configure service
+  ansible.builtin.template:
+    src: "{{ service_config_template }}"
+    dest: "{{ service_config_path }}"
+    owner: "{{ service_user | default('root') }}"
+    group: "{{ service_group | default('root') }}"
+    mode: "0644"
+  when: service_config_template is defined and service_config_path is defined
+  notify: restart service
+  tags: ['service', 'config']
+
+- name: Configure systemd service unit
+  ansible.builtin.template:
+    src: "{{ service_unit_template }}"
+    dest: "/etc/systemd/system/{{ service_name }}.service"
+    mode: "0644"
+  when: service_unit_template is defined and service_name is defined
+  notify: reload systemd
+  tags: ['service', 'systemd']
+
+# -----------------------------------------------------------------------------
+# Service Management
+# -----------------------------------------------------------------------------
+- name: Configure service environment
+  ansible.builtin.template:
+    src: "{{ service_env_template }}"
+    dest: "/etc/default/{{ service_name }}"
+    mode: "0644"
+  when: service_env_template is defined and service_name is defined
+  notify: restart service
+  tags: ['service', 'config']
+
+- name: Manage service state
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: "{{ service_state | default('started') }}"
+    enabled: "{{ service_enabled | default(true) }}"
+    daemon_reload: true
+  when: service_name is defined
+  tags: ['service', 'state'] 

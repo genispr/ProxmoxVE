@@ -1,0 +1,13 @@
+---
+# =============================================================================
+# Timezone Configuration Role Default Variables
+# =============================================================================
+
+# Default timezone (UTC by default, can be overridden to Europe/Madrid for Barcelona)
+timezone: "UTC"
+
+# Whether to validate the timezone after setting
+timezone_validate: true
+
+# Whether to restart time-dependent services after timezone change
+timezone_restart_services: false 

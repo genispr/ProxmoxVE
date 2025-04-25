@@ -28,4 +28,5 @@ galaxy_info:
     - readarr
     - recyclarr
 
-dependencies: []
+dependencies:
+  - role: proxmox

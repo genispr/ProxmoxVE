@@ -1,0 +1,12 @@
+---
+# =============================================================================
+# Timezone Configuration Role Handlers
+# =============================================================================
+
+- name: update tzdata
+  ansible.builtin.command: dpkg-reconfigure --frontend noninteractive tzdata
+  when: ansible_os_family == "Debian"
+
+- name: update tzdata
+  ansible.builtin.command: tzdata-update
+  when: ansible_os_family == "RedHat" 

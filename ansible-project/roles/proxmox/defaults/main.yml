@@ -1,0 +1,254 @@
+---
+# =============================================================================
+# Proxmox Role Default Variables
+# =============================================================================
+
+# System Configuration
+# -----------------------------------------------------------------------------
+proxmox_hostname: ""
+proxmox_timezone: "UTC"
+proxmox_locale: "en_US.UTF-8"
+proxmox_keyboard_layout: "us"
+
+# System Performance Configuration
+proxmox_sysctl:
+  # VM/CT Memory Management
+  vm_swappiness: 10
+  vm_overcommit_memory: 1
+  vm_min_free_kbytes: 262144
+  vm_dirty_ratio: 20
+  vm_dirty_background_ratio: 10
+  
+  # Network Performance
+  net_core_somaxconn: 1024
+  net_core_netdev_max_backlog: 5000
+  net_ipv4_tcp_max_syn_backlog: 4096
+  net_ipv4_tcp_fastopen: 3
+  net_ipv4_tcp_tw_reuse: 1
+  
+  # File System & I/O
+  fs_file_max: 1048576
+  fs_inotify_max_user_watches: 524288
+  fs_aio_max_nr: 1048576
+
+# CPU Configuration
+proxmox_cpu:
+  # CPU governor options:
+  # schedutil    - Uses scheduler information for frequency scaling (balanced performance/power)
+  # performance  - Maximum frequency (highest performance)
+  # powersave    - Minimum frequency (maximum power savings)
+  # ondemand     - Aggressive dynamic scaling based on load
+  # conservative - Gradual dynamic scaling based on load
+  governor: "schedutil"
+  mitigations: false  # Disable CPU vulnerability mitigations for better performance
+  intel_pstate: "performance"  # For Intel CPUs
+  amd_pstate: "performance"    # For AMD CPUs
+
+# Storage Performance
+proxmox_storage_optimizations:
+  zfs_arc_max: "{{ (ansible_memtotal_mb * 0.5) | int }}M"  # 50% of total RAM for ZFS ARC
+  zfs_options:
+    compression: "lz4"
+    atime: "off"
+    xattr: "sa"
+  ext4_options: "noatime,nodiratime,discard"
+  
+# System Security Hardening
+proxmox_security:
+  ssh:
+    port: 22
+    permit_root_login: "prohibit-password"
+    password_authentication: false
+    max_auth_tries: 3
+    allow_users: ["root"]
+    allow_groups: ["sudo"]
+  
+  kernel:
+    enable_module_loading: true
+    disable_modules: ["cramfs", "freevxfs", "jffs2", "hfs", "hfsplus", "udf"]
+    sysrq: 0
+    kexec_load_disabled: 1
+    
+  limits:
+    nproc: 65535
+    nofile: 1048576
+    memlock: "unlimited"
+    
+  fail2ban:
+    enabled: true
+    bantime: "24h"
+    findtime: "24h"
+    maxretry: 3
+    ignoreip: ["127.0.0.1/8"]
+
+# System Monitoring
+proxmox_monitoring:
+  smart_enabled: true
+  smart_schedule: "weekly"
+  zfs_scrub_schedule: "monthly"
+  zfs_snapshot_schedule: "daily"
+  health_check_enabled: true
+  health_check_interval: "6h"
+  metrics_retention: "12M"
+
+# Power Management
+proxmox_power:
+  # CPU governor: performance, powersave, ondemand, conservative, or schedutil
+  cpu_governor: "performance"
+  
+  # PCIE ASPM policy: default, performance, powersave, powersupersave
+  pcie_aspm_policy: "performance"
+  
+  # Enable USB autosuspend
+  usb_autosuspend: false
+  
+  # Disk power management settings
+  disks:
+    - name: "sda"
+      power_control: "on"
+      scheduler: "none"
+    - name: "sdb"
+      power_control: "on"
+      scheduler: "none"
+  
+  # Network interface power management
+  network_interfaces:
+    - name: "eth0"
+      power_control: "on"
+    - name: "eth1"
+      power_control: "on"
+  
+  # Thermal management mode: enabled, disabled
+  thermal_mode: "enabled"
+  
+  # Fan control mode: auto, manual
+  fan_mode: "auto"
+
+# System Logging Configuration
+proxmox_logging:
+  ram_enabled: true
+  ram_size: "128M"
+  ram_compress: true
+  ram_mount: "/var/log.ram"
+  backup_enabled: true
+  backup_interval: "1h"
+  backup_retention: 7
+  paths:
+    - "/var/log"
+    - "/var/log/journal"
+    - "/var/log/nginx"
+    - "/var/log/containers"
+    - "/var/log/pods"
+
+# Repository Configuration
+# -----------------------------------------------------------------------------
+proxmox_enterprise_repo_enabled: false
+proxmox_no_subscription_repo_enabled: true
+proxmox_test_repo_enabled: false
+proxmox_extra_repositories: []
+
+# Network Configuration
+# -----------------------------------------------------------------------------
+proxmox_network_interfaces: []
+proxmox_dns_servers: ["1.1.1.1", "8.8.8.8"]
+proxmox_default_gateway: ""
+
+# Storage Configuration
+# -----------------------------------------------------------------------------
+proxmox_storage_directories:
+  - path: "/var/lib/vz"
+    type: "directory"
+    content: ["images", "rootdir"]
+  - path: "/var/lib/vz/template/cache"
+    type: "directory"
+    content: ["vztmpl"]
+
+# Security Configuration
+# -----------------------------------------------------------------------------
+proxmox_ssh_public_keys: []
+proxmox_firewall_enabled: true
+proxmox_fail2ban_enabled: true
+proxmox_selinux_state: "disabled"
+
+# LXC Container Base Configuration
+# -----------------------------------------------------------------------------
+proxmox_lxc_templates:
+  debian: "debian-11-standard"
+  ubuntu: "ubuntu-22.04-standard"
+  alpine: "alpine-3.17-default"
+
+proxmox_lxc_defaults:
+  memory: 512
+  swap: 512
+  cores: 1
+  storage: "local-lvm"
+  unprivileged: true
+  features:
+    nesting: false
+    keyctl: false
+  mounts: []
+  nameserver: "1.1.1.1"
+  searchdomain: ""
+  onboot: true
+
+# Virtual Machine Base Configuration
+# -----------------------------------------------------------------------------
+proxmox_vm_defaults:
+  memory: 1024
+  cores: 1
+  sockets: 1
+  storage: "local-lvm"
+  disk_format: "raw"
+  network_model: "virtio"
+  onboot: true
+  agent: true
+  cpu_type: "host"
+
+# Service Management
+# -----------------------------------------------------------------------------
+managed_services:
+  # Core system services
+  - name: "sshd"
+    state: "started"
+    enabled: true
+  # Custom services can be added here with extended configuration
+  - name: "custom-service"
+    state: "started"
+    enabled: true
+    package: "custom-service"
+    config_template: "custom-service.conf.j2"
+    config_path: "/etc/custom-service/config"
+    user: "root"
+    group: "root"
+    dependencies: []
+    environment:
+      KEY: "value"
+
+# Backup Configuration
+# -----------------------------------------------------------------------------
+proxmox_backup:
+  enabled: false
+  storage: "local"
+  schedule: "0 0 * * *"
+  retention: 7
+  compress: "zstd"
+  mode: "snapshot"
+
+# Cluster Configuration
+# -----------------------------------------------------------------------------
+proxmox_cluster:
+  enabled: false
+  name: "proxmox-cluster"
+  nodes: []
+  quorum_votes: 1
+  link_mode: "static"
+
+# Email Notification Configuration
+# -----------------------------------------------------------------------------
+proxmox_email:
+  enabled: false
+  server: ""
+  port: 25
+  security: "none"
+  from_address: ""
+  to_address: "" 

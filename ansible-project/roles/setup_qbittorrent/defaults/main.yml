@@ -1,0 +1,55 @@
+---
+# qBittorrent Configuration
+qbittorrent:
+  # Installation settings
+  version: "latest"  # or specific version
+  install_path: "/opt/qbittorrent"
+  config_path: "{{ media_config_base }}/qbittorrent"
+  
+  # Service configuration
+  service:
+    user: "{{ media_user_name }}"
+    group: "{{ media_group_name }}"
+    uid: "{{ media_user_id }}"
+    gid: "{{ media_group_id }}"
+    enabled: true
+    state: "started"
+  
+  # Web UI configuration
+  webui:
+    port: 8090
+    username: "admin"
+    # Default password is 'adminadmin' - should be changed after installation
+    password_hash: "@ByteArray(amjeuVrF3xRbgzqWQmes5A==:XK3/Ra9jUmqUc4RwzCtrhrkQIcYczBl90DJw2rT8DFVTss4nxpoRhvyxhCf87ahVE3SzD8K9lyPdpyUCfmVsUg==)"
+    use_upnp: false
+  
+  # Download configuration
+  downloads:
+    base_path: "{{ media_downloads_base }}"
+    save_path: "{{ media_downloads.complete }}"
+    incomplete_path: "{{ media_downloads.incomplete }}"
+    torrents_path: "{{ media_downloads.torrents }}"
+    use_incomplete_path: true
+    
+  # Network configuration
+  network:
+    port: 6881
+    port_range: "6881-6891"
+    encryption: "prefer"  # none, prefer, require
+    
+  # Performance settings
+  performance:
+    max_connections_per_torrent: 50
+    max_uploads_per_torrent: 50
+    max_connections_global: 500
+    max_uploads_global: 20
+    max_active_downloads: 3
+    max_active_uploads: 3
+    max_active_torrents: 5
+
+# LXC container settings
+qbittorrent_lxc_memory: "{{ media_lxc_memory }}"
+qbittorrent_lxc_swap: "{{ media_lxc_swap }}"
+qbittorrent_lxc_cores: "{{ media_lxc_cores }}"
+qbittorrent_lxc_disk_size: "{{ media_lxc_disk_size }}"
+qbittorrent_lxc_features: "{{ media_lxc_features | combine({'nesting': false}) }}"

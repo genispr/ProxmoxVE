@@ -9,4 +9,5 @@ galaxy_info:
     - name: "Debian"
       versions:
         - all
-dependencies: {}
+dependencies:
+  - role: proxmox

@@ -1,122 +1,107 @@
-# Ansible Role: Proxmox LXC Container Creator
+# Proxmox LXC Manager Role
 
-This role creates or updates LXC containers on Proxmox Virtual Environment (PVE) servers. It's designed to be a robust base for deploying applications, particularly Docker containers, within LXC.
-
-## Features
-
-- Creates or ensures an LXC container exists with specified parameters.
-- Configurable hostname, ID, OS template, resources (CPU, memory, disk), networking (static or DHCP).
-- Enables features recommended for running Docker inside LXC (`nesting: 1`, `keyctl: 1`).
-- Starts the container after creation/update.
-- Waits for SSH readiness after container start (useful for subsequent configuration tasks).
-- Fetches and stores the container's IP address as an Ansible fact (`lxc_<vmid>_ip`).
+This role manages LXC containers on Proxmox VE hosts, including creation, configuration, and maintenance.
 
 ## Requirements
 
-- Ansible 2.9 or higher.
-- Proxmox VE server with API access configured.
-- **Ansible Collection:** `community.general` must be installed (`ansible-galaxy collection install community.general`).
-- **Proxmox OS Templates:** Ensure the desired OS template (defined in `lxc_os_template`) exists on your Proxmox node's designated storage.
-    - List available templates: `pveam available`
-    - Find system templates: `pveam available --section system`
-    - Download a template (e.g., Debian 12): `pveam download local debian-12-standard` (replace `local` with your template storage ID).
-
-## Security Considerations
-
-- **Root Password:** The default `lxc_password` is highly insecure. **DO NOT use the default in production.**
-    - **Recommendation:** Use Ansible Vault to encrypt the password (`ansible-vault encrypt_string 'YOUR_STRONG_PASSWORD' --name 'lxc_password'`).
-    - Alternatively, set strong passwords per host/group in your inventory vars.
-    - **Best Practice:** Configure SSH key-based authentication within the container using a subsequent role/task instead of relying on passwords.
-- **Proxmox API Password/Token:** The `proxmox_api_password` variable should contain your Proxmox API user's password or an API token secret. **DO NOT store this directly in `defaults/main.yml` for production.**
-    - **Recommendation:** Use Ansible Vault (`ansible-vault encrypt_string 'YOUR_API_SECRET' --name 'proxmox_api_password'`) or environment variables.
-- **Unprivileged Containers:** The role defaults to `lxc_unprivileged: true`. While generally recommended, running Docker might require specific permissions or configurations. If you encounter permission issues with Docker inside an unprivileged container, you might need to adjust AppArmor/Seccomp profiles or consider using a privileged container (`lxc_unprivileged: false`) if absolutely necessary, understanding the security implications.
+- Proxmox VE 7.x or higher
+- Root access to Proxmox host
+- Valid LXC template available in Proxmox storage
 
 ## Role Variables
 
-Refer to `defaults/main.yml` for a complete list of configurable variables.
+### Required Variables
 
-### Important Variables
-- lxc_id: Container ID.
-- lxc_hostname: Container hostname.
-- lxc_os_template: OS template in the format "storage:template".
-- lxc_cores: Number of CPU cores.
-- lxc_memory: Memory in MB.
-- lxc_disk_size: Disk size (e.g., 50G).
-- lxc_network_config: Network configuration for the container.
-- lxc_password: Root password (use Ansible Vault for production).
+```yaml
+container_id: "100"                    # Unique ID for the container
+container_hostname: "container1"        # Hostname for the container
+container_template: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+```
+
+### Optional Variables
+
+```yaml
+# Resource configuration
+container_cores: 2                     # Number of CPU cores
+container_memory: 2048                 # Memory in MB
+container_swap: 512                    # Swap in MB
+container_disk: "8G"                   # Disk size
+
+# Network configuration
+container_network:
+  net0: "name=eth0,bridge=vmbr0,ip=dhcp"
+  net1: "name=eth1,bridge=vmbr1,ip=none"
+
+# Feature configuration
+container_features:
+  nesting: false                       # Enable nesting
+  keyctl: true                        # Enable key control
+  fuse: false                         # Enable FUSE
+  mount: nfs                          # Allow NFS mounts
+  dri: false                         # Enable hardware acceleration
+
+# Storage configuration
+container_rootfs: "local-lvm"         # Storage for root filesystem
+container_mp:                         # Additional mount points
+  mp0: "local-lvm:100,mp=/mnt/data"
+
+# System configuration
+container_timezone: "Europe/Madrid"    # Timezone (Barcelona, Spain)
+container_dns:
+  - "1.1.1.1"
+  - "1.0.0.1"
+container_searchdomain: "local"
+```
+
+## Dependencies
+
+- Role: pve_post_install (for initial Proxmox setup)
 
 ## Example Playbook
 
 ```yaml
-- hosts: your_proxmox_node
-  become: no # Tasks run against the Proxmox API, not the host OS directly
-  gather_facts: no # Usually not needed for API operations
-
-  vars_prompt:
-    - name: vault_proxmox_api_password
-      prompt: "Enter Proxmox API Password/Token Secret"
-      private: yes
-
+- hosts: proxmox
   roles:
-    - role: create_lxc_container
+    - role: proxmox_lxc_manager
       vars:
-        lxc_enable_dri_passthrough: true # Enable hardware acceleration
-        proxmox_api_password: "{{ vault_proxmox_api_password }}"
-        lxc_id: 201
-        lxc_hostname: docker-host-01
-        lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
-        lxc_cores: 4
-        lxc_memory: 4096
-        lxc_disk_size: 50G
-        lxc_network_config:
-          net0: name=eth0,bridge=vmbr0,ip=192.168.1.201/24,gw=192.168.1.1
-        # lxc_password: "YOUR_SECURE_PASSWORD" # Or use Vault
-
-# Example of using the created container later in the same play
-- hosts: your_proxmox_node # This play targets the Proxmox node to get the IP fact
-  become: no
-  gather_facts: no
-  tasks:
-    - name: Show the IP of the created container
-      ansible.builtin.debug:
-        msg: "Container 201 IP is {{ lxc_201_ip }}"
-      when: lxc_201_ip is defined
-
-# You would typically have another play targeting the new container
-# using add_host or dynamic inventory to configure it further.
-# - hosts: docker-host-01 # Assuming inventory is updated
-#   roles:
-#     - role: setup_docker
-#     - role: deploy_my_app
+        container_id: "101"
+        container_hostname: "docker01"
+        container_template: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+        container_cores: 4
+        container_memory: 4096
+        container_features:
+          nesting: true
+          keyctl: true
+        container_network:
+          net0: "name=eth0,bridge=vmbr0,ip=dhcp"
 ```
 
-## Usage
+## Role Structure
 
-Include this role in your playbook and pass the required variables. For example:
-```yaml
-- hosts: your_proxmox_node
-  become: no
-  gather_facts: no
-  roles:
-    - role: create_lxc_container
-      vars:
-        lxc_id: 201
-        lxc_hostname: docker-host-01
-        lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
-        lxc_cores: 4
-        lxc_memory: 4096
-        lxc_disk_size: 50G
-        lxc_network_config:
-          net0: name=eth0,bridge=vmbr0,ip=192.168.1.201/24,gw=192.168.1.1
-        # lxc_password: "YOUR_SECURE_PASSWORD" # Use Vault in production
+```
+proxmox_lxc_manager/
+├── defaults/
+│   └── main.yml           # Default variables
+├── handlers/
+│   └── main.yml           # Handlers for container operations
+├── tasks/
+│   ├── main.yml          # Main tasks file
+│   ├── preflight.yml     # Preflight checks
+│   ├── create.yml        # Container creation
+│   ├── network.yml       # Network configuration
+│   └── configure.yml     # Post-creation configuration
+├── templates/
+│   └── container_config.j2  # Container configuration template
+└── README.md            # This documentation
 ```
 
-## Troubleshooting
+## Tags
 
-- Verify the OS template exists on the Proxmox node.
-- Validate the network configuration and API credentials.
-- For Docker inside LXC, note that unprivileged containers may require additional configuration adjustments.
+- `lxc_create`: Container creation tasks
+- `lxc_network`: Network configuration tasks
+- `lxc_config`: Container configuration tasks
+- `lxc_all`: All container tasks
 
 ## License
 
-MIT
+MIT 

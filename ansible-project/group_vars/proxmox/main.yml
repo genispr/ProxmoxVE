@@ -1,0 +1,45 @@
+---
+# =============================================================================
+# Proxmox Host Configuration
+# =============================================================================
+
+# Basic settings
+proxmox_node: "pve"
+proxmox_api_host: "{{ ansible_host }}"
+proxmox_api_user: "root@pam"
+
+# Storage configuration
+proxmox_storage: "local"
+proxmox_template_storage: "local"
+proxmox_backup_storage: "backup" # Dedicated backup storage
+proxmox_iso_storage: "local" # ISO image storage
+
+# Network configuration
+default_bridge: "vmbr0"
+default_gateway: "{{ ansible_default_ipv4.gateway }}"
+default_subnet: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+
+# Container/VM defaults
+default_container_template: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+default_container_cores: 2
+default_container_memory: 2048
+default_container_swap: 512
+default_container_disk: "8G"
+default_container_features:
+  - nesting=0
+  - keyctl=1
+  - fuse=0
+
+# Backup configuration
+backup_enabled: true
+backup_retention: 7 # Days to keep backups
+backup_schedule: "0 2 * * *" # Daily at 2 AM
+backup_compression: "zstd" # Compression algorithm
+backup_mode: "snapshot" # Backup mode (snapshot/suspend)
+backup_storage: "local" # Storage for backups
+
+# Resource monitoring
+enable_monitoring: true
+cpu_threshold: 80 # Alert if CPU usage exceeds 80%
+memory_threshold: 85 # Alert if memory usage exceeds 85%
+storage_threshold: 90 # Alert if storage usage exceeds 90%

@@ -1,6 +1,0 @@
----
-- name: Reboot Proxmox VE Node (if required)
-  ansible.builtin.reboot:
-    msg: "Rebooting Proxmox VE node to apply changes."
-  become: true
-  when: reboot_required | bool

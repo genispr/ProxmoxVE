@@ -1,0 +1,21 @@
+[Unit]
+Description=qBittorrent-nox service
+Documentation=https://github.com/qbittorrent/qBittorrent/wiki
+After=network.target
+
+[Service]
+Type=simple
+User={{ qbittorrent.service.user }}
+Group={{ qbittorrent.service.group }}
+ExecStart={{ qbittorrent.install_path }}/qbittorrent-nox
+Restart=on-failure
+RestartSec=3
+
+# Security enhancements
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target 

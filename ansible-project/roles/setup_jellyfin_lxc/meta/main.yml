@@ -25,4 +25,5 @@ galaxy_info:
     - qsv
     - vaapi
 
-dependencies: []
+dependencies:
+  - role: proxmox

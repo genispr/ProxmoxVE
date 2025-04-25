@@ -1,4 +1,8 @@
 ---
 # tasks file for timezone synchronization (included from main.yml)
 
-- import_tasks: ../../create_lxc_container/tasks/timezone.yml
+- name: Configure timezone
+  ansible.builtin.include_role:
+    name: configure_timezone
+  vars:
+    timezone: "{{ timezone | default('Europe/Madrid') }}"

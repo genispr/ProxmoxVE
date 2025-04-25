@@ -1,0 +1,38 @@
+---
+# Download Client Configuration Template
+# This template supports both qBittorrent and Transmission
+
+{% if arr_download_client.type == 'qbittorrent' %}
+name: qBittorrent
+implementation: QBittorrent
+protocol: torrent
+configContract: QBittorrentSettings
+enable: true
+host: "{{ arr_download_client.host }}"
+port: {{ arr_download_client.port | default(8080) }}
+urlBase: "{{ arr_download_client.url_base | default('') }}"
+username: "{{ arr_download_client.username }}"
+password: "{{ arr_download_client.password }}"
+category: "{{ arr_download_client.category | default('arr-downloads') }}"
+recentMoviePriority: {{ arr_download_client.recent_priority | default(0) }}
+olderMoviePriority: {{ arr_download_client.older_priority | default(0) }}
+initialState: {{ arr_download_client.initial_state | default(0) }}
+sequentialOrder: {{ arr_download_client.sequential | default(false) | lower }}
+firstAndLast: {{ arr_download_client.first_and_last | default(false) | lower }}
+{% endif %}
+
+{% if arr_download_client.type == 'transmission' %}
+name: Transmission
+implementation: Transmission
+protocol: torrent
+configContract: TransmissionSettings
+enable: true
+host: "{{ arr_download_client.host }}"
+port: {{ arr_download_client.port | default(9091) }}
+urlBase: "{{ arr_download_client.url_base | default('/transmission/') }}"
+username: "{{ arr_download_client.username }}"
+password: "{{ arr_download_client.password }}"
+category: "{{ arr_download_client.category | default('arr-downloads') }}"
+addPaused: {{ arr_download_client.add_paused | default(false) | lower }}
+useSsl: {{ arr_download_client.use_ssl | default(false) | lower }}
+{% endif %} 

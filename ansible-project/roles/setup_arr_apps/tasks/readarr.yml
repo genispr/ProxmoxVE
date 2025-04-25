@@ -1,11 +1,25 @@
 ---
+# Deploy Readarr container
 - name: Deploy Readarr container
   community.docker.docker_container:
-    name: readarr
-    image: "{{ readarr_image | default('ghcr.io/linuxserver/readarr:latest') }}"
+    name: "{{ arr_apps.readarr.container_name }}"
+    image: "{{ arr_apps.readarr.image }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ readarr_port | default('8787:8787') }}"
+    restart_policy: unless-stopped
+    env:
+      PUID: "{{ arr_apps.readarr.puid | default('1000') }}"
+      PGID: "{{ arr_apps.readarr.pgid | default('1000') }}"
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ readarr_config | default('/docker/readarr/config') }}:/config"
+      - "{{ arr_config_base }}/readarr:/config"
+      - "{{ arr_downloads_path }}:/downloads"
+      - "{{ arr_books_path }}:/books"
+    ports:
+      - "{{ arr_apps.readarr.port }}:8787"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ arr_apps.readarr.memory | default('1g') }}"
+    memory_swap: "{{ arr_apps.readarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ arr_apps.readarr.cpu_shares | default(1024) }}"

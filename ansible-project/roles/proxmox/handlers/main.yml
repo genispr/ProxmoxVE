@@ -1,0 +1,90 @@
+---
+# =============================================================================
+# Proxmox Role Handlers
+# =============================================================================
+
+# System Handlers
+# -----------------------------------------------------------------------------
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: restart systemd-timesyncd
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    state: restarted
+
+- name: restart log2ram
+  ansible.builtin.systemd:
+    name: log2ram
+    state: restarted
+    daemon_reload: true
+
+# Network Handlers
+# -----------------------------------------------------------------------------
+- name: restart networking
+  ansible.builtin.service:
+    name: networking
+    state: restarted
+
+- name: reload firewall
+  ansible.builtin.command: pve-firewall reload
+
+# Service Handlers
+# -----------------------------------------------------------------------------
+- name: restart service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: restarted
+  when: service_name is defined
+
+- name: reload service
+  ansible.builtin.systemd:
+    name: "{{ service_name }}"
+    state: reloaded
+  when: service_name is defined
+
+# Proxmox Specific Handlers
+# -----------------------------------------------------------------------------
+- name: restart pveproxy
+  ansible.builtin.systemd:
+    name: pveproxy
+    state: restarted
+
+- name: restart pvedaemon
+  ansible.builtin.systemd:
+    name: pvedaemon
+    state: restarted
+
+- name: restart pve-cluster
+  ansible.builtin.systemd:
+    name: pve-cluster
+    state: restarted
+
+- name: restart pve-firewall
+  ansible.builtin.systemd:
+    name: pve-firewall
+    state: restarted
+
+# Container and VM Handlers
+# -----------------------------------------------------------------------------
+- name: restart lxc container
+  community.general.proxmox:
+    api_host: "localhost"
+    api_user: "root@pam"
+    vmid: "{{ item.id }}"
+    state: restarted
+    type: lxc
+  when: item.id is defined
+  loop: "{{ lxc_containers }}"
+
+- name: restart virtual machine
+  community.general.proxmox:
+    api_host: "localhost"
+    api_user: "root@pam"
+    vmid: "{{ item.id }}"
+    state: restarted
+    type: qemu
+  when: item.id is defined
+  loop: "{{ virtual_machines }}" 
+ 

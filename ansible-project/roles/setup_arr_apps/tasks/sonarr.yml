@@ -1,11 +1,25 @@
 ---
+# Deploy Sonarr container
 - name: Deploy Sonarr container
   community.docker.docker_container:
-    name: sonarr
-    image: "{{ sonarr_image | default('ghcr.io/linuxserver/sonarr:latest') }}"
+    name: "{{ arr_apps.sonarr.container_name }}"
+    image: "{{ arr_apps.sonarr.image }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ sonarr_port | default('8989:8989') }}"
+    restart_policy: unless-stopped
+    env:
+      PUID: "{{ arr_apps.sonarr.puid | default('1000') }}"
+      PGID: "{{ arr_apps.sonarr.pgid | default('1000') }}"
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ sonarr_config | default('/docker/sonarr/config') }}:/config"
+      - "{{ arr_config_base }}/sonarr:/config"
+      - "{{ arr_downloads_path }}:/downloads"
+      - "{{ arr_tv_path }}:/tv"
+    ports:
+      - "{{ arr_apps.sonarr.port }}:8989"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ arr_apps.sonarr.memory | default('1g') }}"
+    memory_swap: "{{ arr_apps.sonarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ arr_apps.sonarr.cpu_shares | default(1024) }}"

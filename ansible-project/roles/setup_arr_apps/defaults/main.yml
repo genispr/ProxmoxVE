@@ -1,52 +1,103 @@
 ---
-# Default settings for the media apps LXC container and Docker configuration
+# *Arr apps role defaults
 
-# LXC container default settings for media apps
-media_lxc_id: 300
-media_lxc_hostname: arr-apps
-media_lxc_os_template: local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst
-media_lxc_network_config:
-  net0: "name=eth0,bridge=vmbr0,ip=dhcp"
-media_lxc_cores: 2
-media_lxc_memory: 4096
-media_lxc_disk_size: 20G
+# User configuration
+arr_user: "arruser"
+arr_uid: 2002
+arr_group: "mediagroup"
+arr_gid: 2000
 
-# Docker settings
-media_install_docker_compose_plugin: true
+# Container configuration
+arr_container:
+  memory: 4096
+  cores: 2
+  disk: "20G"
+  features:
+    nesting: true
+    mount: "nfs,cifs"
 
-# Default container images and port mappings for each app
-prowlarr_image: "ghcr.io/linuxserver/prowlarr:latest"
-prowlarr_port: "9696:9696"
-prowlarr_config: "/docker/prowlarr/config"
+# Application paths
+arr_config_base: "/config"
+arr_media_paths:
+  downloads:
+    incomplete: "/media/downloads/incomplete"
+    complete: "/media/downloads/complete"
+    categories:
+      movies: "/media/downloads/complete/movies"
+      tv: "/media/downloads/complete/tv"
+      music: "/media/downloads/complete/music"
+      books: "/media/downloads/complete/books"
+  library:
+    movies: "/media/media/Movies"
+    tv: "/media/media/TV"
+    music: "/media/media/Music"
+    books:
+      root: "/media/media/Books"
+      ebooks: "/media/media/Books/eBooks"
+      audiobooks: "/media/media/Books/Audiobooks"
 
-# Ensure ARR apps can locate Prowlarr (used by Recyclarr and ARR apps communication)
-prowlarr_host: "192.168.1.101"      # Replace with the actual Prowlarr host IP
-prowlarr_port: "{{ prowlarr_port | default('9696:9696') }}"
+# Default permissions
+arr_directory_mode: "0755"
 
-sonarr_image: "ghcr.io/linuxserver/sonarr:latest"
-sonarr_port: "8989:8989"
-sonarr_config: "/docker/sonarr/config"
+# Remote storage configuration
+arr_remote_storage:
+  enabled: false
+  type: "nfs"
+  server: ""
+  share_path: ""
+  mount_point: "/media"
+  mount_opts: "defaults"
+  nfs_opts: "rw,sync,hard,intr"
+  cifs_username: ""
+  cifs_password: ""
+  cifs_domain: ""
 
-radarr_image: "ghcr.io/linuxserver/radarr:latest"
-radarr_port: "7878:7878"
-radarr_config: "/docker/radarr/config"
+# Application Configuration
+arr_apps:
+  radarr:
+    container_name: "radarr"
+    image: "linuxserver/radarr:latest"
+    port: 7878
+    config_path: "/config/radarr"
+    media_paths:
+      downloads: "{{ arr_media_paths.downloads }}"
+      movies: "{{ arr_media_paths.library.movies }}"
+  
+  sonarr:
+    container_name: "sonarr"
+    image: "linuxserver/sonarr:latest"
+    port: 8989
+    config_path: "/config/sonarr"
+    media_paths:
+      downloads: "{{ arr_media_paths.downloads }}"
+      tv: "{{ arr_media_paths.library.tv }}"
+  
+  lidarr:
+    container_name: "lidarr"
+    image: "linuxserver/lidarr:latest"
+    port: 8686
+    config_path: "/config/lidarr"
+    media_paths:
+      downloads: "{{ arr_media_paths.downloads }}"
+      music: "{{ arr_media_paths.library.music }}"
+  
+  readarr:
+    container_name: "readarr"
+    image: "linuxserver/readarr:latest"
+    port: 8787
+    config_path: "/config/readarr"
+    media_paths:
+      downloads: "{{ arr_media_paths.downloads }}"
+      books: "{{ arr_media_paths.library.books }}"
 
-lidarr_image: "ghcr.io/linuxserver/lidarr:latest"
-lidarr_port: "8686:8686"
-lidarr_config: "/docker/lidarr/config"
+# Download client configuration
+arr_download_client:
+  enabled: true
+  type: "qbittorrent"
+  host: "qbittorrent"
+  port: 8080
+  username: "admin"
+  password: "adminadmin"
+  ssl: false
+  category: "arr"
 
-bazarr_image: "ghcr.io/linuxserver/bazarr:latest"
-bazarr_port: "6767:6767"
-bazarr_config: "/docker/bazarr/config"
-
-readarr_image: "ghcr.io/linuxserver/readarr:latest"
-readarr_port: "8787:8787"
-readarr_config: "/docker/readarr/config"
-
-recyclarr_image: "ghcr.io/linuxserver/recyclarr:latest"
-recyclarr_port: "7879:7879"
-recyclarr_config: "/docker/recyclarr/config"
-
-# New qbitorrent defaults (installed in a separate LXC container)
-qbitorrent_host: "192.168.1.100"    # Replace with the actual IP of the qbitorrent LXC
-qbitorrent_port: "8080"

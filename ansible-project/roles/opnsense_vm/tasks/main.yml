@@ -1,42 +1,99 @@
 ---
-- name: "Create Opnsense VM - qm create"
-  command: >
-    qm create {{ opnsense_vm_id }}
-    -name {{ opnsense_hostname }}
-    -cores {{ opnsense_cpu_cores }}
-    -memory {{ opnsense_ram }}
-    -net0 virtio,bridge={{ opnsense_bridge }},macaddr={{ opnsense_mac }}
-    -ostype l26
-  register: create_vm
-  changed_when: "'created' in create_vm.stdout"
-  failed_when: create_vm.rc != 0
+# Download and prepare OPNsense image
+- name: Download and prepare OPNsense image
+  block:
+    - name: Download OPNsense image
+      ansible.builtin.get_url:
+        url: "{{ opnsense_image_url }}"
+        dest: "/tmp/opnsense.iso"
+        mode: "0644"
+      when: opnsense_image_url is defined
 
-- name: "Allocate disk for Opnsense VM"
-  command: >
-    pvesm alloc {{ opnsense_storage }} {{ opnsense_vm_id }} vm-{{ opnsense_vm_id }}-disk-0 4M
-  register: alloc_disk
-  changed_when: alloc_disk.rc == 0
-  failed_when: alloc_disk.rc != 0
+    - name: Move OPNsense image to template storage
+      ansible.builtin.copy:
+        src: "/tmp/opnsense.iso"
+        dest: "/var/lib/vz/template/iso/opnsense.iso"
+        remote_src: true
+        mode: "0644"
+      when: opnsense_image_url is defined
 
-- name: "Import disk for Opnsense VM"
-  command: >
-    qm importdisk {{ opnsense_vm_id }} {{ opnsense_image_path }} {{ opnsense_storage }} -format qcow2
-  register: import_disk
-  changed_when: import_disk.rc == 0
-  failed_when: import_disk.rc != 0
+# Create VM using proxmox role
+- name: Set VM creation parameters
+  ansible.builtin.set_fact:
+    vm_params:
+      name: "{{ opnsense_vm_name }}"
+      id: "{{ opnsense_vm_id | default(lookup('pipe','pvesh get /cluster/nextid') | trim) }}"
+      memory: "{{ opnsense_vm_memory }}"
+      cores: "{{ opnsense_vm_cores }}"
+      disk_size: "{{ opnsense_vm_disk_size }}"
+      template: "{{ opnsense_vm_template }}"
+      ostype: "other"
+      features:
+        machine: "q35"
+        bios: "ovmf"
+      description: |
+        OPNsense VM
+        Version: {{ opnsense_version }}
+        Created: {{ ansible_date_time.iso8601 }}
 
-- name: "Set VM configuration"
-  command: >
-    qm set {{ opnsense_vm_id }}
-    -efidisk0 {{ opnsense_storage }}:vm-{{ opnsense_vm_id }}-disk-0,efitype=4m
-    -boot order=scsi0
-    -onboot 1
-  register: set_vm
-  changed_when: set_vm.rc == 0
-  failed_when: set_vm.rc != 0
+# Configure network interfaces
+- name: Configure network interfaces
+  block:
+    - name: Configure WAN interface
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -net0 "model={{ opnsense_wan_network.model }},bridge={{ opnsense_wan_network.bridge }}{% if opnsense_wan_network.tag %},tag={{ opnsense_wan_network.tag }}{% endif %}"
+      when: vm_params.id is defined
 
-- name: "Start Opnsense VM"
-  command: qm start {{ opnsense_vm_id }}
-  register: start_vm
-  changed_when: "'started' in start_vm.stdout or start_vm.rc == 0"
-  failed_when: start_vm.rc != 0
+    - name: Configure LAN interface
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -net1 "model={{ opnsense_lan_network.model }},bridge={{ opnsense_lan_network.bridge }}{% if opnsense_lan_network.tag %},tag={{ opnsense_lan_network.tag }}{% endif %}"
+      when: vm_params.id is defined
+
+# Configure VM-specific settings
+- name: Configure OPNsense-specific settings
+  block:
+    - name: Configure EFI disk
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -efidisk0 {{ proxmox_vm_defaults.storage }}:{{ vm_params.id }}/vm-{{ vm_params.id }}-disk-0,efitype=4m
+      when: vm_params.id is defined
+
+    - name: Configure boot order
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -boot order=scsi0
+      when: vm_params.id is defined
+
+    - name: Enable serial console
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -serial0 socket
+      when: vm_params.id is defined
+
+# Start VM if requested
+- name: Start OPNsense VM
+  ansible.builtin.command:
+    cmd: "qm start {{ vm_params.id }}"
+  when:
+    - vm_params.id is defined
+    - start_vm | default(true) | bool
+  register: start_result
+  changed_when: start_result.rc == 0
+  failed_when: start_result.rc != 0 and "already running" not in start_result.stderr
+
+- name: Display completion message
+  ansible.builtin.debug:
+    msg: |
+      OPNsense VM has been created successfully
+      VMID: {{ vm_params.id }}
+      Name: {{ vm_params.name }}
+      Memory: {{ vm_params.memory }}MB
+      Cores: {{ vm_params.cores }}
+      Version: {{ opnsense_version }}

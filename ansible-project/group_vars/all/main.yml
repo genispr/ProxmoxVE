@@ -1,0 +1,38 @@
+---
+# General settings
+timezone: "UTC"
+locale: "en_US.UTF-8"
+
+# Proxmox settings
+proxmox_node: "pve"
+proxmox_api_host: "{{ ansible_host }}"
+proxmox_api_user: "root@pam"
+proxmox_storage: "local"
+proxmox_template_storage: "local"
+
+# Network settings
+default_bridge: "vmbr0"
+default_gateway: "{{ ansible_default_ipv4.gateway }}"
+default_subnet: "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.netmask }}"
+
+# Container/VM defaults
+default_container_template: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+default_container_cores: 2
+default_container_memory: 2048
+default_container_swap: 512
+default_container_disk: "8G"
+
+# Docker settings
+docker_version: "latest"
+docker_users: ["root"]
+docker_compose_version: "v2.24.0"
+
+# Application settings
+apps_data_path: "/opt/appdata"
+media_path: "/opt/media"
+downloads_path: "/opt/downloads"
+
+# Backup settings
+backup_enabled: true
+backup_retention: 7
+backup_schedule: "0 2 * * *"

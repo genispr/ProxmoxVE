@@ -1,0 +1,72 @@
+---
+# Configure media paths with proper permissions and ownership
+
+# Ensure base media storage location exists
+- name: Ensure base media storage location exists
+  ansible.builtin.file:
+    path: "{{ arr_media_base_path }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ arr_user | default('1000') }}"
+    group: "{{ arr_group | default('1000') }}"
+
+# Mount remote storage if configured
+- name: Mount remote storage
+  ansible.builtin.mount:
+    path: "{{ arr_remote_storage.mount_point }}"
+    src: "{{ arr_remote_storage.source }}"
+    fstype: "{{ arr_remote_storage.type }}"
+    opts: "{{ arr_remote_storage.options }}"
+    state: mounted
+  when:
+    - arr_remote_storage is defined
+    - arr_remote_storage.enabled | bool
+
+# Create media library directories
+- name: Create media library directories
+  ansible.builtin.file:
+    path: "{{ item.value.path }}"
+    state: directory
+    mode: "{{ item.value.permissions }}"
+    owner: "{{ item.value.owner }}"
+    group: "{{ item.value.group }}"
+    recurse: true
+  loop: "{{ media_library | dict2items }}"
+  when: item.value.path is defined
+
+# Create downloads subdirectories
+- name: Create downloads subdirectories
+  ansible.builtin.file:
+    path: "{{ media_library.downloads.path }}/{{ item }}"
+    state: directory
+    mode: "{{ media_library.downloads.permissions }}"
+    owner: "{{ media_library.downloads.owner }}"
+    group: "{{ media_library.downloads.group }}"
+  loop: "{{ media_library.downloads.subdirs }}"
+  when: media_library.downloads.path is defined
+
+# Set ACLs for better permission management
+- name: Set ACLs on media directories
+  ansible.builtin.acl:
+    path: "{{ item.value.path }}"
+    entity: "{{ arr_user | default('1000') }}"
+    etype: user
+    permissions: rwx
+    state: present
+    recursive: true
+  loop: "{{ media_library | dict2items }}"
+  when:
+    - item.value.path is defined
+    - use_acl | default(false) | bool
+
+# Create symbolic links for legacy paths if needed
+- name: Create symbolic links for legacy paths
+  ansible.builtin.file:
+    src: "{{ item.value.path }}"
+    path: "{{ arr_config_base }}/{{ item.key }}"
+    state: link
+    force: true
+  loop: "{{ media_library | dict2items | selectattr('value.root_folder', 'true') | list }}"
+  when:
+    - create_legacy_links | bool
+    - item.value.path is defined

@@ -1,5 +1,45 @@
-ini
+# Homelab Inventory
+# Main Proxmox infrastructure and managed hosts
+
 [all]
 localhost ansible_connection=local
-[pve_nodes]
-your_proxmox_ip_or_hostname ansible_user=root # Or another user with sudo access
+
+[proxmox]
+# Proxmox VE hosts
+pve01 ansible_host=192.168.1.100 ansible_user=root node_id=1
+
+[containers]
+# LXC containers
+# Format: hostname ansible_host=IP ansible_user=root container_id=XXX type=TYPE
+# Example:
+#jellyfin     ansible_host=192.168.1.101 ansible_user=root container_id=101 type=media
+#vaultwarden  ansible_host=192.168.1.102 ansible_user=root container_id=102 type=service
+
+[vms]
+# Virtual Machines
+# Format: hostname ansible_host=IP ansible_user=root vm_id=XXX type=TYPE
+# Example:
+#docker-host  ansible_host=192.168.1.103 ansible_user=root vm_id=103 type=docker
+#opnsense    ansible_host=192.168.1.1   ansible_user=root vm_id=104 type=network
+
+# Application Groups
+[media_servers]
+# Media server applications (Jellyfin, Plex, Emby)
+#jellyfin
+
+[docker_hosts]
+# Docker host machines
+#docker-host
+
+[backup_targets]
+# Hosts to backup
+pve01
+#jellyfin
+#vaultwarden
+
+[all:vars]
+# Global variables
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+ansible_become=true
+ansible_become_method=sudo

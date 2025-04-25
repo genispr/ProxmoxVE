@@ -1,0 +1,112 @@
+---
+# Configure download client for *arr apps
+
+- name: Create download client directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ arr_user }}"
+    group: "{{ arr_group }}"
+  loop:
+    - "{{ arr_download_client.base_path }}"
+    - "{{ arr_download_client.base_path }}/complete"
+    - "{{ arr_download_client.incomplete_path }}"
+    - "{{ arr_download_client.movies_path }}"
+    - "{{ arr_download_client.tv_path }}"
+    - "{{ arr_download_client.music_path }}"
+    - "{{ arr_download_client.books_path }}"
+  when: arr_download_client.enabled | bool
+
+- name: Wait for qBittorrent WebUI to be available
+  ansible.builtin.uri:
+    url: "http://{{ arr_download_client.host }}:{{ arr_download_client.port }}"
+    method: GET
+    user: "{{ arr_download_client.username }}"
+    password: "{{ arr_download_client.password }}"
+    force_basic_auth: true
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+  when:
+    - arr_download_client.enabled | bool
+    - arr_download_client.type == "qbittorrent"
+
+- name: Configure qBittorrent categories
+  ansible.builtin.uri:
+    url: "http://{{ arr_download_client.host }}:{{ arr_download_client.port }}/api/v2/torrents/createCategory"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      category: "{{ item.category }}"
+      savePath: "{{ item.path }}"
+    user: "{{ arr_download_client.username }}"
+    password: "{{ arr_download_client.password }}"
+    force_basic_auth: true
+    status_code: [200, 409] # 409 means category already exists
+  loop:
+    - { category: "radarr", path: "{{ arr_download_client.movies_path }}" }
+    - { category: "sonarr", path: "{{ arr_download_client.tv_path }}" }
+    - { category: "lidarr", path: "{{ arr_download_client.music_path }}" }
+    - { category: "readarr", path: "{{ arr_download_client.books_path }}" }
+  when:
+    - arr_download_client.enabled | bool
+    - arr_download_client.type == "qbittorrent"
+
+- name: Configure qBittorrent default paths
+  ansible.builtin.uri:
+    url: "http://{{ arr_download_client.host }}:{{ arr_download_client.port }}/api/v2/app/setPreferences"
+    method: POST
+    body_format: json
+    body:
+      save_path: "{{ arr_download_client.base_path }}/complete"
+      temp_path_enabled: true
+      temp_path: "{{ arr_download_client.incomplete_path }}"
+      preallocate_all: true
+      incomplete_files_ext: true
+    user: "{{ arr_download_client.username }}"
+    password: "{{ arr_download_client.password }}"
+    force_basic_auth: true
+    status_code: 200
+  when:
+    - arr_download_client.enabled | bool
+    - arr_download_client.type == "qbittorrent"
+
+# Configure download client in each *arr application
+- name: Configure download client in Radarr
+  ansible.builtin.include_tasks: configure_arr_download_client.yml
+  vars:
+    arr_app: "radarr"
+    download_client_category: "radarr"
+  when:
+    - arr_download_client.enabled | bool
+    - arr_apps.radarr.enabled | bool
+
+- name: Configure download client in Sonarr
+  ansible.builtin.include_tasks: configure_arr_download_client.yml
+  vars:
+    arr_app: "sonarr"
+    download_client_category: "sonarr"
+  when:
+    - arr_download_client.enabled | bool
+    - arr_apps.sonarr.enabled | bool
+
+- name: Configure download client in Lidarr
+  ansible.builtin.include_tasks: configure_arr_download_client.yml
+  vars:
+    arr_app: "lidarr"
+    download_client_category: "lidarr"
+  when:
+    - arr_download_client.enabled | bool
+    - arr_apps.lidarr.enabled | bool
+
+- name: Configure download client in Readarr
+  ansible.builtin.include_tasks: configure_arr_download_client.yml
+  vars:
+    arr_app: "readarr"
+    download_client_category: "readarr"
+  when:
+    - arr_download_client.enabled | bool
+    - arr_apps.readarr.enabled | bool

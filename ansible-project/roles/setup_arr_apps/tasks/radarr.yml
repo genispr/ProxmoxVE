@@ -1,11 +1,25 @@
 ---
+# Deploy Radarr container
 - name: Deploy Radarr container
   community.docker.docker_container:
-    name: radarr
-    image: "{{ radarr_image | default('ghcr.io/linuxserver/radarr:latest') }}"
+    name: "{{ arr_apps.radarr.container_name }}"
+    image: "{{ arr_apps.radarr.image }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ radarr_port | default('7878:7878') }}"
+    restart_policy: unless-stopped
+    env:
+      PUID: "{{ arr_apps.radarr.puid | default('1000') }}"
+      PGID: "{{ arr_apps.radarr.pgid | default('1000') }}"
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ radarr_config | default('/docker/radarr/config') }}:/config"
+      - "{{ arr_config_base }}/radarr:/config"
+      - "{{ arr_downloads_path }}:/downloads"
+      - "{{ arr_movies_path }}:/movies"
+    ports:
+      - "{{ arr_apps.radarr.port }}:7878"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ arr_apps.radarr.memory | default('1g') }}"
+    memory_swap: "{{ arr_apps.radarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ arr_apps.radarr.cpu_shares | default(1024) }}"

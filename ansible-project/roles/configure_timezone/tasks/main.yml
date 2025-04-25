@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# Timezone Configuration Role Tasks
+# =============================================================================
+
+- name: Ensure timezone is set to {{ timezone | default('Europe/Madrid') }}
+  community.general.timezone:
+    name: "{{ timezone | default('Europe/Madrid') }}"
+  when: ansible_connection != 'lxc'
+  tags: ['timezone', 'configuration']
+
+- name: Configure timezone in LXC container
+  ansible.builtin.command:
+    cmd: "timedatectl set-timezone {{ timezone | default('Europe/Madrid') }}"
+  when: ansible_connection == 'lxc'
+  changed_when: true
+  tags: ['timezone', 'configuration']
+
+- name: Ensure tzdata is installed
+  ansible.builtin.package:
+    name: tzdata
+    state: present
+  when: ansible_pkg_mgr is defined
+  tags: ['timezone', 'packages']
+
+- name: Update /etc/timezone
+  ansible.builtin.copy:
+    content: "{{ timezone | default('Europe/Madrid') }}\n"
+    dest: /etc/timezone
+    owner: root
+    group: root
+    mode: '0644'
+  notify: update tzdata
+  tags: ['timezone', 'configuration']
+
+- name: Create symlink for localtime
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ timezone | default('Europe/Madrid') }}"
+    dest: /etc/localtime
+    state: link
+    force: true
+  notify: update tzdata
+  tags: ['timezone', 'configuration'] 

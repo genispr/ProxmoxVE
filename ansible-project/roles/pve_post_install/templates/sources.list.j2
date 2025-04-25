@@ -1,5 +1,0 @@
-deb http://ftp.debian.org/debian {{ ansible_distribution_release }} main contrib {{ 'non-free' if include_non_free else '' }}
-deb http://ftp.debian.org/debian {{ ansible_distribution_release }}-updates main contrib {{ 'non-free' if include_non_free else '' }}
-
-# security updates
-deb http://security.debian.org/debian-security {{ ansible_distribution_release }}-security main contrib {{ 'non-free' if include_non_free else '' }}

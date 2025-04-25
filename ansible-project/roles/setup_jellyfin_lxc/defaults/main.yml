@@ -1,5 +1,71 @@
 ---
-# defaults file for setup_jellyfin_lxc
+# Jellyfin role defaults
+
+# User configuration
+jellyfin_user: "jellyfin"
+jellyfin_uid: 2003
+jellyfin_group: "mediagroup"
+jellyfin_gid: 2000
+
+# Container configuration
+jellyfin_container:
+  memory: 4096
+  cores: 4
+  disk: "32G"
+  features:
+    nesting: false
+    mount: "nfs,cifs"
+    device: true
+
+# Application paths
+jellyfin_config_dir: "/config"
+jellyfin_cache_dir: "/cache"
+jellyfin_transcoding_path: "/transcodes"
+
+# Media library paths
+jellyfin_media_paths:
+  movies: "/media/media/Movies"
+  tv: "/media/media/TV"
+  music: "/media/media/Music"
+  books:
+    root: "/media/media/Books"
+    ebooks: "/media/media/Books/eBooks"
+    audiobooks: "/media/media/Books/Audiobooks"
+
+# Network configuration
+jellyfin_ports:
+  http: 8096
+  https: 8920
+
+# Remote storage configuration
+jellyfin_remote_storage:
+  enabled: false
+  type: "nfs"
+  server: ""
+  share_path: ""
+  mount_point: "/media"
+  mount_opts: "defaults"
+  nfs_opts: "rw,sync,hard,intr"
+  cifs_username: ""
+  cifs_password: ""
+  cifs_domain: ""
+
+# Feature flags
+jellyfin_features:
+  install_ffmpeg: true
+  install_mc: false
+  setup_intel_qsv: true
+  install_intel_drivers: false
+  install_nvidia_drivers: false
+
+# APT configuration
+jellyfin_apt:
+  key_url: "https://repo.jellyfin.org/jellyfin_team.gpg.key"
+  repo_url: "https://repo.jellyfin.org/{{ ansible_distribution | lower }}"
+  repo_suite: "{{ ansible_distribution_release | lower }}"
+  repo_component: "main"
+  package_version: "latest"
+  non_free_component: "{{ 'non-free-firmware' if (ansible_distribution == 'Debian' and ansible_distribution_major_version | int >= 12) else 'non-free' }}"
 
 # Jellyfin APT key URL
 jellyfin_apt_key_url: https://repo.jellyfin.org/jellyfin_team.gpg.key
@@ -12,11 +78,11 @@ jellyfin_apt_repo_component: main
 # Package version (pin if necessary, e.g., "10.8.10")
 jellyfin_package_version: latest
 
-# User and group under which Jellyfin runs (managed by the package)
-# Jellyfin service user
-jellyfin_user: jellyfin
-# Jellyfin service group
-jellyfin_group: jellyfin
+# User and group configuration
+jellyfin_user: "jellyfin"
+jellyfin_uid: 2003
+jellyfin_group: "{{ media_storage.permissions.group }}"
+jellyfin_gid: "{{ media_storage.permissions.gid }}"
 
 # --- Feature Flags ---
 
@@ -28,3 +94,60 @@ jellyfin_install_mc: false
 jellyfin_setup_intel_qsv: true
 # APT component for non‑free Intel drivers (Debian specifics)
 debian_non_free_component: "{{ 'non-free-firmware' if (ansible_distribution == 'Debian' and ansible_distribution_major_version | int >= 12) else 'non-free' }}"
+
+# LXC container settings
+jellyfin_lxc_id: ""
+jellyfin_lxc_name: "jellyfin"
+jellyfin_lxc_template: "{{ proxmox_lxc_templates.ubuntu }}"
+
+# Container resource settings
+jellyfin_lxc_memory: "4096"
+jellyfin_lxc_swap: "2048"
+jellyfin_lxc_cores: "4"
+jellyfin_lxc_disk_size: "32G"
+
+# Container features for hardware transcoding
+jellyfin_lxc_features:
+  nesting: false
+  mount: "nfs,cifs"
+  device: true
+
+# Jellyfin-specific settings
+jellyfin_version: "latest"
+
+# Media paths (from shared media configuration)
+jellyfin_media_paths:
+  movies: "{{ media_storage.paths.media.movies }}"
+  tv: "{{ media_storage.paths.media.tv }}"
+  music: "{{ media_storage.paths.media.music }}"
+  books:
+    root: "{{ media_storage.paths.media.books.root }}"
+    ebooks: "{{ media_storage.paths.media.books.ebooks }}"
+    audiobooks: "{{ media_storage.paths.media.books.audiobooks }}"
+
+# Application paths
+jellyfin_config_base: "/config"
+jellyfin_data_base: "/var/lib"
+jellyfin_log_base: "/var/log"
+jellyfin_cache_base: "/var/cache"
+jellyfin_transcoding_path: "/tmp/transcoding"
+
+# Application directories
+jellyfin_data_dir: "{{ jellyfin_data_base }}/jellyfin"
+jellyfin_log_dir: "{{ jellyfin_log_base }}/jellyfin"
+
+# Hardware acceleration
+jellyfin_enable_hw_transcoding: true
+jellyfin_hw_acceleration_type: "vaapi"  # Options: vaapi, nvenc, qsv
+jellyfin_install_intel_drivers: false
+jellyfin_install_nvidia_drivers: false
+
+# Network settings
+jellyfin_http_port: 8096
+jellyfin_https_port: 8920
+jellyfin_service_discovery: true
+
+# FFmpeg settings
+jellyfin_ffmpeg_version: "latest"
+jellyfin_custom_ffmpeg: false
+jellyfin_ffmpeg_path: "/usr/lib/jellyfin-ffmpeg"

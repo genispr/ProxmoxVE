@@ -1,11 +1,25 @@
 ---
+# Deploy Bazarr container
 - name: Deploy Bazarr container
   community.docker.docker_container:
-    name: bazarr
-    image: "{{ bazarr_image | default('ghcr.io/linuxserver/bazarr:latest') }}"
+    name: "{{ arr_apps.bazarr.container_name }}"
+    image: "{{ arr_apps.bazarr.image }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ bazarr_port | default('6767:6767') }}"
+    restart_policy: unless-stopped
+    env:
+      PUID: "{{ arr_apps.bazarr.puid | default('1000') }}"
+      PGID: "{{ arr_apps.bazarr.pgid | default('1000') }}"
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ bazarr_config | default('/docker/bazarr/config') }}:/config"
+      - "{{ arr_config_base }}/bazarr:/config"
+      - "{{ arr_movies_path }}:/movies"
+      - "{{ arr_tv_path }}:/tv"
+    ports:
+      - "{{ arr_apps.bazarr.port }}:6767"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ arr_apps.bazarr.memory | default('1g') }}"
+    memory_swap: "{{ arr_apps.bazarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ arr_apps.bazarr.cpu_shares | default(1024) }}"

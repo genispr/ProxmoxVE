@@ -1,4 +1,70 @@
 ---
+# Create Docker VM using proxmox role's VM functionality
+- name: Set VM creation parameters
+  ansible.builtin.set_fact:
+    vm_params:
+      name: "{{ docker_vm_name }}"
+      id: "{{ docker_vm_id }}"
+      memory: "{{ docker_vm_memory }}"
+      cores: "{{ docker_vm_cores }}"
+      disk_size: "{{ docker_vm_disk_size }}"
+      template: "{{ docker_vm_template }}"
+      network: "{{ docker_vm_network }}"
+
+# Docker Installation and Configuration
+- name: Install Docker
+  block:
+    - name: Download Docker installation script
+      ansible.builtin.get_url:
+        url: "{{ docker_get_script_url }}"
+        dest: "/tmp/get-docker.sh"
+        mode: "0755"
+
+    - name: Execute Docker installation script
+      ansible.builtin.command:
+        cmd: "sh /tmp/get-docker.sh"
+      register: docker_install
+      changed_when: docker_install.rc == 0
+      notify: restart docker
+
+    - name: Create Docker configuration directory
+      ansible.builtin.file:
+        path: "/etc/docker"
+        state: directory
+        mode: "0755"
+
+    - name: Configure Docker daemon
+      ansible.builtin.copy:
+        content: "{{ docker_daemon_config }}"
+        dest: "/etc/docker/daemon.json"
+        mode: "0644"
+      notify: restart docker
+
+    - name: Install Docker Compose
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-Linux-x86_64"
+        dest: "/usr/local/bin/docker-compose"
+        mode: "0755"
+
+    - name: Add users to Docker group
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: docker
+        append: true
+      loop: "{{ docker_users }}"
+      notify: restart docker
+
+  when: vm_params is defined
+  tags: ['docker', 'install']
+
+# Use handlers from proxmox role
+handlers:
+  - name: restart docker
+    ansible.builtin.systemd:
+      name: docker
+      state: restarted
+      enabled: true
+
 - name: Update apt cache
   apt:
     update_cache: yes
@@ -12,41 +78,6 @@
       - gnupg
       - lsb-release
     state: present
-
-- name: Download Docker install script
-  get_url:
-    url: "{{ docker_get_script_url }}"
-    dest: /tmp/get-docker.sh
-    mode: '0755'
-  when: (lookup('ansible.builtin.command', 'docker --version', errors='ignore')).rc != 0
-
-- name: Run Docker install script
-  command: sh /tmp/get-docker.sh
-  args:
-    creates: /usr/bin/docker
-
-- name: Create /etc/docker directory
-  file:
-    path: /etc/docker
-    state: directory
-    mode: '0755'
-
-- name: Configure Docker daemon
-  copy:
-    content: "{{ docker_daemon_config }}"
-    dest: /etc/docker/daemon.json
-    mode: '0644'
-  notify: Restart Docker
-
-- name: Install Docker Compose plugin
-  when: install_docker_compose
-  block:
-    - name: Download Docker Compose plugin
-      get_url:
-        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64"
-        dest: /usr/lib/docker/cli-plugins/docker-compose
-        mode: '0755'
-      register: compose_download
 
 - name: Deploy Portainer container if enabled
   when: install_portainer

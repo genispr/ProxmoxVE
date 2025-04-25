@@ -1,0 +1,44 @@
+[LegalNotice]
+Accepted=true
+
+[Application]
+MemoryWorkingSetLimit={{ ansible_memtotal_mb // 4 }}
+
+[BitTorrent]
+Session\DefaultSavePath={{ qbittorrent.downloads.save_path }}
+Session\TempPath={{ qbittorrent.downloads.incomplete_path }}
+Session\TorrentExportDirectory={{ qbittorrent.downloads.torrents_path }}
+Session\UseIncompleteExtension=true
+Session\Port={{ qbittorrent.network.port }}
+Session\PortRangeMin={{ qbittorrent.network.port_range.split('-')[0] }}
+Session\PortRangeMax={{ qbittorrent.network.port_range.split('-')[1] }}
+Session\Encryption={{ qbittorrent.network.encryption }}
+Session\GlobalMaxConnections={{ qbittorrent.performance.max_connections_global }}
+Session\GlobalMaxUploadRate={{ qbittorrent.performance.max_uploads_global }}
+Session\GlobalMaxDownloadRate=-1
+Session\MaxActiveDownloads={{ qbittorrent.performance.max_active_downloads }}
+Session\MaxActiveUploads={{ qbittorrent.performance.max_active_uploads }}
+Session\MaxActiveTorrents={{ qbittorrent.performance.max_active_torrents }}
+
+[Preferences]
+WebUI\Port={{ qbittorrent.webui.port }}
+WebUI\Username={{ qbittorrent.webui.username }}
+WebUI\Password_PBKDF2="{{ qbittorrent.webui.password_hash }}"
+WebUI\UseUPnP={{ qbittorrent.webui.use_upnp | lower }}
+Downloads\SavePath={{ qbittorrent.downloads.save_path }}
+Downloads\TempPath={{ qbittorrent.downloads.incomplete_path }}
+Downloads\TorrentExportDir={{ qbittorrent.downloads.torrents_path }}
+Downloads\UseIncompleteExtension={{ qbittorrent.downloads.use_incomplete_path | lower }}
+Connection\PortRangeMin={{ qbittorrent.network.port_range.split('-')[0] }}
+Connection\PortRangeMax={{ qbittorrent.network.port_range.split('-')[1] }}
+Connection\GlobalDLLimit=-1
+Connection\GlobalUPLimit=-1
+Connection\GlobalDLLimitAlt=0
+Connection\GlobalUPLimitAlt=0
+Connection\MaxConnections={{ qbittorrent.performance.max_connections_global }}
+Connection\MaxUploads={{ qbittorrent.performance.max_uploads_global }}
+Connection\MaxConnectionsPerTorrent={{ qbittorrent.performance.max_connections_per_torrent }}
+Connection\MaxUploadsPerTorrent={{ qbittorrent.performance.max_uploads_per_torrent }}
+Bittorrent\MaxActiveDownloads={{ qbittorrent.performance.max_active_downloads }}
+Bittorrent\MaxActiveUploads={{ qbittorrent.performance.max_active_uploads }}
+Bittorrent\MaxActiveTorrents={{ qbittorrent.performance.max_active_torrents }} 

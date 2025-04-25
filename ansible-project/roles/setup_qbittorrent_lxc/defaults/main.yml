@@ -1,0 +1,44 @@
+---
+# qBittorrent role defaults
+
+# User configuration
+qbittorrent_user: "qbittorrent"
+qbittorrent_uid: 2001
+qbittorrent_group: "mediagroup"
+qbittorrent_gid: 2000
+
+# Container configuration
+qbittorrent_container:
+  memory: 2048
+  cores: 2
+  disk: "20G"
+  features:
+    nesting: false
+    mount: "nfs,cifs"
+
+# Application paths
+qbittorrent_config_path: "/config"
+qbittorrent_download_paths:
+  incomplete: "/media/downloads/incomplete"
+  complete: "/media/downloads/complete"
+  categories:
+    movies: "/media/downloads/complete/movies"
+    tv: "/media/downloads/complete/tv"
+    music: "/media/downloads/complete/music"
+    books: "/media/downloads/complete/books"
+
+# Default permissions
+qbittorrent_directory_mode: "0755"
+
+# Remote storage configuration
+qbittorrent_remote_storage:
+  enabled: false
+  type: "nfs"
+  server: ""
+  share_path: ""
+  mount_point: "/media"
+  mount_opts: "defaults"
+  nfs_opts: "rw,sync,hard,intr"
+  cifs_username: ""
+  cifs_password: ""
+  cifs_domain: "" 

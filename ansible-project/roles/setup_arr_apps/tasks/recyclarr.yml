@@ -1,11 +1,54 @@
 ---
+# Deploy Recyclarr container
 - name: Deploy Recyclarr container
   community.docker.docker_container:
-    name: recyclarr
-    image: "{{ recyclarr_image | default('ghcr.io/linuxserver/recyclarr:latest') }}"
+    name: "{{ recyclarr.container_name | default('recyclarr') }}"
+    image: "{{ recyclarr.image | default('ghcr.io/recyclarr/recyclarr:latest') }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ recyclarr_port | default('7879:7879') }}"
+    restart_policy: unless-stopped
+    env:
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ recyclarr_config | default('/docker/recyclarr/config') }}:/config"
+      - "{{ arr_config_base }}/recyclarr:/config"
+      - "{{ arr_config_base }}/radarr:/radarr_config:ro"
+      - "{{ arr_config_base }}/sonarr:/sonarr_config:ro"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ recyclarr.memory | default('512m') }}"
+    memory_swap: "{{ recyclarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ recyclarr.cpu_shares | default(512) }}"
+
+# Create Recyclarr configuration directory
+- name: Create Recyclarr config directory
+  ansible.builtin.file:
+    path: "{{ arr_config_base }}/recyclarr"
+    state: directory
+    mode: "0755"
+
+# Configure Recyclarr
+- name: Create Recyclarr configuration
+  ansible.builtin.template:
+    src: recyclarr.yml.j2
+    dest: "{{ arr_config_base }}/recyclarr/recyclarr.yml"
+    mode: "0644"
+  vars:
+    radarr_instances:
+      - name: radarr
+        base_url: "http://{{ arr_apps.radarr.container_name }}:7878"
+        api_key: "{{ arr_apps.radarr.api_key }}"
+    sonarr_instances:
+      - name: sonarr
+        base_url: "http://{{ arr_apps.sonarr.container_name }}:8989"
+        api_key: "{{ arr_apps.sonarr.api_key }}"
+
+# Create cron job for regular syncing
+- name: Create Recyclarr sync cron job
+  ansible.builtin.cron:
+    name: "Sync Recyclarr configurations"
+    minute: "0"
+    hour: "*/6"
+    job: "docker exec recyclarr recyclarr sync"
+    state: present
+  when: recyclarr.enable_cron | default(true) | bool

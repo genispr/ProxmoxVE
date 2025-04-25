@@ -1,0 +1,18 @@
+---
+# Main tasks for qBittorrent setup
+
+- name: Include preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: ["qbittorrent", "preflight"]
+
+- name: Include installation tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: ["qbittorrent", "install"]
+
+- name: Include configuration tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: ["qbittorrent", "configure"]
+
+- name: Include service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: ["qbittorrent", "service"] 

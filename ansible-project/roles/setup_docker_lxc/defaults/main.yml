@@ -1,5 +1,46 @@
 ---
 # defaults file for setup_docker_lxc
 
-# Install Docker Compose V2 plugin (docker-compose-plugin)
-install_docker_compose_plugin: true
+# Extend proxmox_lxc_defaults with Docker-specific settings
+docker_lxc_id: ""
+docker_lxc_name: "docker"
+docker_lxc_template: "{{ proxmox_lxc_templates.ubuntu }}"
+
+# Override proxmox_lxc_defaults for Docker requirements
+docker_lxc_memory: 2048
+docker_lxc_swap: 1024
+docker_lxc_cores: 2
+docker_lxc_disk_size: "16G"
+
+# Container features required for Docker
+docker_lxc_features:
+  nesting: true
+  keyctl: true
+  mount: "nfs,cifs"
+
+# Docker-specific settings
+docker_version: "latest"
+docker_compose_version: "latest"
+docker_users: ["root"]
+docker_data_directory: "/var/lib/docker"
+docker_compose_directory: "/opt/docker-compose"
+
+# Docker daemon configuration
+docker_daemon_config: |
+  {
+    "log-driver": "journald",
+    "storage-driver": "overlay2",
+    "iptables": true,
+    "live-restore": true
+  }
+
+# Docker Compose installation
+install_docker_compose: true
+docker_compose_version: "v2.20.1"
+
+# Optional Portainer installation
+install_portainer: false
+portainer_image: "portainer/portainer-ce:latest"
+portainer_ports:
+  - "8000:8000"
+  - "9443:9443"

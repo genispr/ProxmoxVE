@@ -1,0 +1,102 @@
+---
+# =============================================================================
+# Jellyfin Container Setup Playbook
+# =============================================================================
+
+- name: Create and configure Jellyfin LXC container
+  hosts: proxmox
+  gather_facts: true
+  vars:
+    container_id: "110"
+    container_hostname: "jellyfin"
+    container_template: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+    container_cores: 4
+    container_memory: 4096
+    container_features:
+      nesting: true
+      keyctl: true
+      dri: true
+    container_disk: "32G"
+    container_network:
+      net0: "name=eth0,bridge=vmbr0,ip=dhcp"
+    container_mp:
+      mp0: "local-lvm:100,mp=/media"
+    container_unprivileged: true
+    system_required_packages:
+      - curl
+      - apt-transport-https
+      - gnupg2
+      - software-properties-common
+      - ffmpeg
+      - intel-gpu-tools
+      - vainfo
+      - mesa-va-drivers
+      - i965-va-driver
+    jellyfin_version: "latest"
+    jellyfin_user: "jellyfin"
+    jellyfin_group: "jellyfin"
+    jellyfin_config_dir: "/etc/jellyfin"
+    jellyfin_media_dir: "/media"
+
+  tasks:
+    - name: Create LXC container
+      ansible.builtin.include_role:
+        name: proxmox_lxc_manager
+      tags: ['container']
+
+    - name: Configure system
+      ansible.builtin.include_role:
+        name: proxmox_system_setup
+      vars:
+        system_timezone: "{{ timezone | default('UTC') }}"
+      tags: ['system']
+
+    - name: Add Jellyfin repository key
+      ansible.builtin.apt_key:
+        url: https://repo.jellyfin.org/debian/jellyfin_team.gpg.key
+        state: present
+      tags: ['jellyfin']
+
+    - name: Add Jellyfin repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ ansible_architecture }}] https://repo.jellyfin.org/debian {{ ansible_distribution_release }} main"
+        state: present
+        filename: jellyfin
+      tags: ['jellyfin']
+
+    - name: Install Jellyfin
+      ansible.builtin.apt:
+        name: jellyfin
+        state: present
+        update_cache: true
+      tags: ['jellyfin']
+
+    - name: Create Jellyfin media directory
+      ansible.builtin.file:
+        path: "{{ jellyfin_media_dir }}"
+        state: directory
+        owner: "{{ jellyfin_user }}"
+        group: "{{ jellyfin_group }}"
+        mode: "0755"
+      tags: ['jellyfin']
+
+    - name: Configure Jellyfin service
+      ansible.builtin.template:
+        src: jellyfin/jellyfin.service.j2
+        dest: /etc/systemd/system/jellyfin.service
+        mode: "0644"
+      notify: restart jellyfin
+      tags: ['jellyfin']
+
+    - name: Enable and start Jellyfin
+      ansible.builtin.systemd:
+        name: jellyfin
+        state: started
+        enabled: true
+      tags: ['jellyfin']
+
+  handlers:
+    - name: restart jellyfin
+      ansible.builtin.systemd:
+        name: jellyfin
+        state: restarted 

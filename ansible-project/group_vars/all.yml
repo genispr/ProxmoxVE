@@ -2,3 +2,6 @@
 # Defines default connection settings and the Python interpreter for the project.
 ansible_user: root
 ansible_python_interpreter: /usr/bin/python3
+
+# Default timezone for all containers and hosts
+timezone: "Europe/Madrid" # Timezone for Barcelona, Spain

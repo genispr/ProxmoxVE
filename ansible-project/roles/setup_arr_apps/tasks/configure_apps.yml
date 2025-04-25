@@ -51,3 +51,262 @@
   template:
     src: "templates/qbitorrent_config.j2"
     dest: "{{ qbitorrent_files.files[0].path if qbitorrent_files.matched > 0 else '/etc/arr_apps/qbitorrent.conf' }}"
+
+---
+# Configure *Arr applications post-deployment
+# This includes setting up connections between apps and configuring basic settings
+
+# Configure media paths first
+- name: Configure media paths
+  include_tasks: configure_media_paths.yml
+
+# Wait for services to be available
+- name: Wait for services to be ready
+  ansible.builtin.uri:
+    url: "http://{{ item.value.container_name }}:{{ item.value.port }}/api/v3/system/status"
+    method: GET
+    headers:
+      X-Api-Key: "{{ item.value.api_key }}"
+    status_code: 200
+    validate_certs: false
+  register: health_check
+  until: health_check.status == 200
+  retries: 30
+  delay: 10
+  loop: "{{ arr_apps | dict2items | selectattr('value.enabled', 'true') | list }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+# Configure root paths in applications
+- name: Configure root paths
+  when: item.value.enabled | bool
+  block:
+    - name: Configure root folders
+      ansible.builtin.uri:
+        url: "http://{{ item.value.container_name }}:{{ item.value.port }}/api/v3/rootfolder"
+        method: POST
+        headers:
+          X-Api-Key: "{{ item.value.api_key }}"
+        body_format: json
+        body:
+          path: "{{ root_path }}"
+      loop:
+        - {
+            value:
+              {
+                container_name: "{{ arr_apps.sonarr.container_name }}",
+                port: 8989,
+                api_key: "{{ arr_apps.sonarr.api_key }}",
+                root_path: "/tv",
+              },
+          }
+        - {
+            value:
+              {
+                container_name: "{{ arr_apps.radarr.container_name }}",
+                port: 7878,
+                api_key: "{{ arr_apps.radarr.api_key }}",
+                root_path: "/movies",
+              },
+          }
+        - {
+            value:
+              {
+                container_name: "{{ arr_apps.lidarr.container_name }}",
+                port: 8686,
+                api_key: "{{ arr_apps.lidarr.api_key }}",
+                root_path: "/music",
+              },
+          }
+        - {
+            value:
+              {
+                container_name: "{{ arr_apps.readarr.container_name }}",
+                port: 8787,
+                api_key: "{{ arr_apps.readarr.api_key }}",
+                root_path: "/books",
+              },
+          }
+      when: item.value.enabled | bool
+      register: root_folder
+      failed_when:
+        - root_folder.status != 201
+        - root_folder.status != 409
+
+# Configure Prowlarr
+- name: Configure Prowlarr applications
+  when: arr_apps.prowlarr.enabled | bool
+  block:
+    - name: Add Sonarr to Prowlarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.prowlarr.container_name }}:9696/api/v1/applications"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.prowlarr.api_key }}"
+        body_format: json
+        body:
+          name: "Sonarr"
+          syncLevel: "fullSync"
+          implementationName: "Sonarr"
+          implementation: "Sonarr"
+          configContract: "SonarrSettings"
+          baseUrl: "http://{{ arr_apps.sonarr.container_name }}:8989"
+          apiKey: "{{ arr_apps.sonarr.api_key }}"
+          prowlarrUrl: "http://{{ arr_apps.prowlarr.container_name }}:9696"
+      when: arr_apps.sonarr.enabled | bool
+      register: sonarr_app
+      failed_when:
+        - sonarr_app.status != 201
+        - sonarr_app.status != 409
+
+    - name: Add Radarr to Prowlarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.prowlarr.container_name }}:9696/api/v1/applications"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.prowlarr.api_key }}"
+        body_format: json
+        body:
+          name: "Radarr"
+          syncLevel: "fullSync"
+          implementationName: "Radarr"
+          implementation: "Radarr"
+          configContract: "RadarrSettings"
+          baseUrl: "http://{{ arr_apps.radarr.container_name }}:7878"
+          apiKey: "{{ arr_apps.radarr.api_key }}"
+          prowlarrUrl: "http://{{ arr_apps.prowlarr.container_name }}:9696"
+      when: arr_apps.radarr.enabled | bool
+      register: radarr_app
+      failed_when:
+        - radarr_app.status != 201
+        - radarr_app.status != 409
+
+    - name: Add Lidarr to Prowlarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.prowlarr.container_name }}:9696/api/v1/applications"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.prowlarr.api_key }}"
+        body_format: json
+        body:
+          name: "Lidarr"
+          syncLevel: "fullSync"
+          implementationName: "Lidarr"
+          implementation: "Lidarr"
+          configContract: "LidarrSettings"
+          baseUrl: "http://{{ arr_apps.lidarr.container_name }}:8686"
+          apiKey: "{{ arr_apps.lidarr.api_key }}"
+          prowlarrUrl: "http://{{ arr_apps.prowlarr.container_name }}:9696"
+      when: arr_apps.lidarr.enabled | bool
+      register: lidarr_app
+      failed_when:
+        - lidarr_app.status != 201
+        - lidarr_app.status != 409
+
+    - name: Add Readarr to Prowlarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.prowlarr.container_name }}:9696/api/v1/applications"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.prowlarr.api_key }}"
+        body_format: json
+        body:
+          name: "Readarr"
+          syncLevel: "fullSync"
+          implementationName: "Readarr"
+          implementation: "Readarr"
+          configContract: "ReadarrSettings"
+          baseUrl: "http://{{ arr_apps.readarr.container_name }}:8787"
+          apiKey: "{{ arr_apps.readarr.api_key }}"
+          prowlarrUrl: "http://{{ arr_apps.prowlarr.container_name }}:9696"
+      when: arr_apps.readarr.enabled | bool
+      register: readarr_app
+      failed_when:
+        - readarr_app.status != 201
+        - readarr_app.status != 409
+
+# Configure Bazarr connections
+- name: Configure Bazarr
+  when: arr_apps.bazarr.enabled | bool
+  block:
+    - name: Configure Sonarr in Bazarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.bazarr.container_name }}:6767/api/system/settings"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.bazarr.api_key }}"
+        body_format: json
+        body:
+          sonarr:
+            - name: "Sonarr"
+              apikey: "{{ arr_apps.sonarr.api_key }}"
+              url: "http://{{ arr_apps.sonarr.container_name }}:8989"
+              ssl: false
+              enabled: true
+      when: arr_apps.sonarr.enabled | bool
+
+    - name: Configure Radarr in Bazarr
+      ansible.builtin.uri:
+        url: "http://{{ arr_apps.bazarr.container_name }}:6767/api/system/settings"
+        method: POST
+        headers:
+          X-Api-Key: "{{ arr_apps.bazarr.api_key }}"
+        body_format: json
+        body:
+          radarr:
+            - name: "Radarr"
+              apikey: "{{ arr_apps.radarr.api_key }}"
+              url: "http://{{ arr_apps.radarr.container_name }}:7878"
+              ssl: false
+              enabled: true
+      when: arr_apps.radarr.enabled | bool
+
+# Configure download client settings
+- name: Configure download clients
+  when: arr_download_client is defined
+  block:
+    - name: Generate download client configuration
+      ansible.builtin.template:
+        src: download_client.yml.j2
+        dest: "/tmp/download_client.json"
+      register: download_client_config
+
+    - name: Configure download client in applications
+      ansible.builtin.uri:
+        url: "http://{{ item.container_name }}:{{ item.port }}/api/v3/downloadclient"
+        method: POST
+        headers:
+          X-Api-Key: "{{ item.api_key }}"
+        body_format: json
+        body: "{{ lookup('file', '/tmp/download_client.json') | from_yaml | to_json }}"
+      loop:
+        - {
+            container_name: "{{ arr_apps.sonarr.container_name }}",
+            port: 8989,
+            api_key: "{{ arr_apps.sonarr.api_key }}",
+          }
+        - {
+            container_name: "{{ arr_apps.radarr.container_name }}",
+            port: 7878,
+            api_key: "{{ arr_apps.radarr.api_key }}",
+          }
+        - {
+            container_name: "{{ arr_apps.lidarr.container_name }}",
+            port: 8686,
+            api_key: "{{ arr_apps.lidarr.api_key }}",
+          }
+        - {
+            container_name: "{{ arr_apps.readarr.container_name }}",
+            port: 8787,
+            api_key: "{{ arr_apps.readarr.api_key }}",
+          }
+      when: item.container_name is defined
+      register: download_client_result
+      failed_when:
+        - download_client_result.status != 201
+        - download_client_result.status != 409
+
+    - name: Clean up temporary files
+      ansible.builtin.file:
+        path: "/tmp/download_client.json"
+        state: absent

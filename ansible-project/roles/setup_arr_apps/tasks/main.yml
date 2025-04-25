@@ -3,46 +3,127 @@
 # This playbook creates an LXC container for media apps, installs Docker,
 # and deploys media aggregation applications.
 
-- name: Create LXC container for media apps
-  include_role:
-    name: create_lxc_container
-  vars:
-    lxc_id: "{{ media_lxc_id }}"
-    lxc_hostname: "{{ media_lxc_hostname }}"
-    lxc_os_template: "{{ media_lxc_os_template }}"
-    lxc_network_config: "{{ media_lxc_network_config }}"
-    lxc_cores: "{{ media_lxc_cores }}"
-    lxc_memory: "{{ media_lxc_memory }}"
-    lxc_disk_size: "{{ media_lxc_disk_size }}"
-    lxc_enable_dri_passthrough: false  # DRI passthrough not required for media apps
+# Set LXC container parameters
+- name: Set LXC container parameters
+  ansible.builtin.set_fact:
+    lxc_params:
+      name: "{{ arr_lxc_name }}"
+      id: "{{ arr_lxc_id | default(lookup('pipe','pvesh get /cluster/nextid') | trim) }}"
+      template: "{{ arr_lxc_template }}"
+      memory: "{{ arr_lxc_memory }}"
+      swap: "{{ arr_lxc_swap }}"
+      cores: "{{ arr_lxc_cores }}"
+      disk_size: "{{ arr_lxc_disk_size }}"
+      features: "{{ arr_lxc_features }}"
+      description: |
+        *arr Media Apps LXC Container
+        Created: {{ ansible_date_time.iso8601 }}
 
-- name: Setup Docker in media apps container
-  include_role:
-    name: setup_docker_lxc
-  vars:
-    install_docker_compose_plugin: "{{ media_install_docker_compose_plugin | default(true) }}"
-    # Optional: Define docker_user if required
+# Setup Docker environment
+- name: Setup Docker environment
+  block:
+    - name: Install Docker prerequisites
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gpg
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+        update_cache: true
 
-- name: Deploy Prowlarr
-  include_tasks: prowlarr.yml
+    - name: Install Docker
+      ansible.builtin.include_role:
+        name: setup_docker_lxc
+      vars:
+        docker_lxc_id: "{{ lxc_params.id }}"
 
+# Create required directories
+- name: Create required directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ arr_config_base }}"
+    - "{{ arr_downloads_path }}"
+    - "{{ arr_media_path }}"
+    - "{{ arr_movies_path }}"
+    - "{{ arr_tv_path }}"
+    - "{{ arr_music_path }}"
+    - "{{ arr_books_path }}"
+
+# Create Docker network
+- name: Create Docker network
+  community.docker.docker_network:
+    name: "{{ arr_docker_network_name }}"
+    state: present
+
+# Deploy applications
 - name: Deploy Sonarr
   include_tasks: sonarr.yml
+  when: arr_apps.sonarr.enabled | bool
 
 - name: Deploy Radarr
   include_tasks: radarr.yml
+  when: arr_apps.radarr.enabled | bool
 
 - name: Deploy Lidarr
   include_tasks: lidarr.yml
+  when: arr_apps.lidarr.enabled | bool
 
-- name: Deploy Bazarr
-  include_tasks: bazarr.yml
+- name: Deploy Prowlarr
+  include_tasks: prowlarr.yml
+  when: arr_apps.prowlarr.enabled | bool
 
 - name: Deploy Readarr
   include_tasks: readarr.yml
+  when: arr_apps.readarr.enabled | bool
 
+- name: Deploy Bazarr
+  include_tasks: bazarr.yml
+  when: arr_apps.bazarr.enabled | bool
+
+# Deploy Recyclarr if enabled
 - name: Deploy Recyclarr
   include_tasks: recyclarr.yml
+  when: recyclarr_enabled | bool
 
-- name: Configure all media apps
+# Configure applications
+- name: Configure applications
   include_tasks: configure_apps.yml
+  when: arr_apps | dict2items | selectattr('value.enabled', 'true') | list | length > 0
+
+# Main tasks for *arr apps setup
+
+- name: Include preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: ["arr", "preflight"]
+
+- name: Include media paths configuration
+  ansible.builtin.import_tasks: configure_media_paths.yml
+  tags: ["arr", "paths"]
+
+- name: Include Docker setup tasks
+  ansible.builtin.import_tasks: setup_docker.yml
+  tags: ["arr", "docker"]
+
+- name: Include download client configuration
+  ansible.builtin.import_tasks: configure_download_client.yml
+  when: arr_download_client.enabled | bool
+  tags: ["arr", "download-client"]
+
+- name: Include app deployment tasks
+  ansible.builtin.import_tasks: deploy_apps.yml
+  tags: ["arr", "deploy"]
+
+- name: Include app configuration tasks
+  ansible.builtin.import_tasks: configure_apps.yml
+  when: arr_apps | dict2items | selectattr('value.enabled', 'true') | list | length > 0
+  tags: ["arr", "configure"]
+
+- name: Include Recyclarr configuration
+  ansible.builtin.import_tasks: configure_recyclarr.yml
+  when: recyclarr_enabled | bool
+  tags: ["arr", "recyclarr"]

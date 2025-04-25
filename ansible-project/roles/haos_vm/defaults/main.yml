@@ -39,3 +39,30 @@ dest_image: "haos_ova-{{ haos_version }}.qcow2"
 
 # Filename for the extracted HAOS image.
 extracted_image: "haos_ova-{{ haos_version }}.qcow2"
+
+# Extend proxmox_vm_defaults with Home Assistant OS specific settings
+haos_vm_id: ""
+haos_vm_name: "homeassistant"
+haos_vm_template: "local:iso/haos.qcow2"  # Home Assistant OS image
+
+# Override proxmox_vm_defaults for Home Assistant requirements
+haos_vm_memory: 4096
+haos_vm_cores: 2
+haos_vm_disk_size: "32G"
+
+# Network settings (uses proxmox_vm_defaults network settings as base)
+haos_vm_network:
+  bridge: "{{ proxmox_vm_defaults.network_model }}"
+  model: "virtio"
+  ip: "dhcp"
+
+# Home Assistant specific settings
+haos_supervisor_channel: "stable"
+haos_timezone: "UTC"
+haos_country: "US"
+haos_language: "en_US"
+
+# Device passthrough settings
+haos_usb_devices: []  # List of USB devices to pass through
+haos_enable_zwave: false
+haos_enable_zigbee: false

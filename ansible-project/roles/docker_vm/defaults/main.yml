@@ -1,4 +1,27 @@
 ---
+# Extend proxmox_vm_defaults with Docker-specific settings
+docker_vm_id: ""
+docker_vm_name: "docker"
+docker_vm_template: "local:iso/ubuntu-22.04-server-amd64.iso"
+
+# Override proxmox_vm_defaults for Docker requirements
+docker_vm_memory: 4096
+docker_vm_cores: 2
+docker_vm_disk_size: "32G"
+
+# Docker-specific settings
+docker_version: "latest"
+docker_compose_version: "latest"
+docker_users: ["root"]
+docker_data_directory: "/var/lib/docker"
+docker_compose_directory: "/opt/docker-compose"
+
+# Network settings (uses proxmox_vm_defaults network settings as base)
+docker_vm_network:
+  bridge: "{{ proxmox_vm_defaults.network_model }}"
+  model: "virtio"
+  ip: "dhcp"
+
 docker_get_script_url: "https://get.docker.com"
 docker_daemon_config: |
   {

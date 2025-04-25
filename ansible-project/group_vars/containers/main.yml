@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# Container Default Configuration
+# =============================================================================
+
+# System settings
+ansible_python_interpreter: /usr/bin/python3
+ansible_user: root
+timezone: "UTC"
+locale: "en_US.UTF-8"
+
+# Container paths
+apps_data_path: "/opt/appdata" # Application data
+media_path: "/opt/media" # Media files
+downloads_path: "/opt/downloads" # Download directory
+backup_path: "/opt/backup" # Local backups
+config_path: "/opt/config" # Configuration files
+
+# Container features
+enable_docker: false # Docker support
+enable_privileged: false # Privileged container
+enable_nesting: false # Nested virtualization
+enable_fuse: false # FUSE support
+enable_keyctl: true # Key management
+enable_nfs: false # NFS mount support
+
+# Resource limits
+memory_limit: "2048" # Memory limit in MB
+swap_size: "512" # Swap size in MB
+cpu_units: "1024" # CPU weight
+cpu_limit: "1" # CPU cores
+disk_size: "10G" # Disk size
+io_weight: "100" # I/O weight
+
+# Network settings
+enable_dhcp: true # Use DHCP
+enable_ipv6: false # Enable IPv6
+nameservers: # DNS servers
+  - "1.1.1.1"
+  - "1.0.0.1"
+
+# Security settings
+enable_apparmor: true # Enable AppArmor
+enable_selinux: false # Enable SELinux
+unprivileged: true # Run as unprivileged container
+protection: true # Enable protection flag

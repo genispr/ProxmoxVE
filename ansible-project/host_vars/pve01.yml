@@ -1,0 +1,31 @@
+---
+# Host-specific network configuration
+ansible_host: "192.168.1.100"
+ansible_user: "root"
+ansible_python_interpreter: "/usr/bin/python3"
+
+# Host-specific Proxmox settings
+proxmox_node_name: "pve01"
+proxmox_hostname: "proxmox.local"
+proxmox_timezone: "UTC"
+
+# Storage configuration
+storage_zfs_pools:
+  - name: "tank"
+    devices: ["/dev/sdb", "/dev/sdc"]
+    type: "mirror"
+
+# Network configuration
+network_interfaces:
+  - name: "vmbr0"
+    address: "192.168.1.100/24"
+    gateway: "192.168.1.1"
+    bridge_ports: "eno1"
+    bridge_stp: "off"
+    bridge_fd: "0"
+
+# Resource limits
+max_containers: 10
+max_vms: 5
+cpu_limit: 0.8 # 80% max CPU usage
+memory_limit: 0.9 # 90% max memory usage

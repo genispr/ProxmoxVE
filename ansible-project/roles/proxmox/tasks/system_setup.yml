@@ -1,0 +1,223 @@
+---
+# =============================================================================
+# System Setup Tasks
+# =============================================================================
+
+# Basic System Configuration
+# -----------------------------------------------------------------------------
+- name: Configure system hostname
+  ansible.builtin.hostname:
+    name: "{{ proxmox_hostname }}"
+  when: proxmox_hostname != ""
+  tags: ["system", "hostname"]
+
+- name: Configure system timezone
+  community.general.timezone:
+    name: "{{ proxmox_timezone }}"
+  tags: ["system", "timezone"]
+  notify: restart systemd-timesyncd
+
+- name: Configure system locale
+  ansible.builtin.locale_gen:
+    name: "{{ proxmox_locale }}"
+    state: present
+  tags: ["system", "locale"]
+
+# System Logging Configuration
+# -----------------------------------------------------------------------------
+- name: Install log2ram dependencies
+  ansible.builtin.apt:
+    name:
+      - rsync
+      - gzip
+    state: present
+  when: proxmox_logging.ram_enabled | bool
+  tags: ["system", "logging"]
+
+- name: Download and install log2ram
+  ansible.builtin.git:
+    repo: "https://github.com/azlux/log2ram.git"
+    dest: "/tmp/log2ram"
+    version: master
+  when: proxmox_logging.ram_enabled | bool
+  register: log2ram_download
+  tags: ["system", "logging"]
+
+- name: Install log2ram
+  ansible.builtin.command:
+    cmd: ./install.sh
+    chdir: /tmp/log2ram
+  args:
+    creates: /usr/local/bin/log2ram
+  when: proxmox_logging.ram_enabled | bool and log2ram_download.changed
+  tags: ["system", "logging"]
+
+- name: Configure log2ram
+  ansible.builtin.template:
+    src: log2ram.conf.j2
+    dest: /etc/log2ram.conf
+    mode: "0644"
+  when: proxmox_logging.ram_enabled | bool
+  notify: restart log2ram
+  tags: ["system", "logging"]
+
+- name: Create log backup directory
+  ansible.builtin.file:
+    path: /var/log.backup
+    state: directory
+    mode: "0755"
+  when: proxmox_logging.ram_enabled | bool and proxmox_logging.backup_enabled | bool
+  tags: ["system", "logging"]
+
+- name: Configure log backup cron
+  ansible.builtin.cron:
+    name: "log backup"
+    job: "rsync -a --delete {{ proxmox_logging.ram_mount }}/ /var/log.backup/"
+    hour: "*/{{ proxmox_logging.backup_interval | regex_replace('[^0-9]', '') }}"
+  when: proxmox_logging.ram_enabled | bool and proxmox_logging.backup_enabled | bool
+  tags: ["system", "logging"]
+
+- name: Configure log cleanup cron
+  ansible.builtin.cron:
+    name: "log cleanup"
+    job: "find /var/log.backup -type f -mtime +{{ proxmox_logging.backup_retention }} -delete"
+    special_time: daily
+  when: proxmox_logging.ram_enabled | bool and proxmox_logging.backup_enabled | bool
+  tags: ["system", "logging"]
+
+# Additional System Configuration
+# -----------------------------------------------------------------------------
+- name: Configure keyboard layout
+  ansible.builtin.template:
+    src: keyboard.j2
+    dest: /etc/default/keyboard
+    mode: "0644"
+  tags: ["system", "keyboard"]
+
+# System Performance Configuration
+# -----------------------------------------------------------------------------
+- name: Configure system performance parameters
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-proxmox-performance.conf
+  with_dict: "{{ proxmox_sysctl }}"
+  tags: ["system", "performance"]
+
+# CPU Configuration
+# -----------------------------------------------------------------------------
+- name: Configure CPU governor
+  ansible.builtin.copy:
+    dest: "/sys/devices/system/cpu/cpu{{ item }}/cpufreq/scaling_governor"
+    content: "{{ proxmox_cpu.governor }}"
+  with_sequence: start=0 end="{{ ansible_processor_vcpus - 1 }}"
+  when: proxmox_cpu.governor is defined
+  tags: ["system", "cpu"]
+
+- name: Configure CPU mitigations
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"\s*$'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="$1 mitigations={{ "off" if not proxmox_cpu.mitigations else "auto" }}"'
+    backrefs: yes
+  notify: update grub
+  tags: ["system", "cpu"]
+
+# Storage Performance
+# -----------------------------------------------------------------------------
+- name: Configure ZFS ARC size
+  ansible.builtin.lineinfile:
+    path: /etc/modprobe.d/zfs.conf
+    line: "options zfs zfs_arc_max={{ proxmox_storage_optimizations.zfs_arc_max }}"
+    create: yes
+  when: proxmox_storage_optimizations.zfs_arc_max is defined
+  tags: ["system", "storage"]
+
+- name: Configure ZFS dataset options
+  community.general.zfs:
+    name: "{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      compression: "{{ proxmox_storage_optimizations.zfs_options.compression }}"
+      atime: "{{ proxmox_storage_optimizations.zfs_options.atime }}"
+      xattr: "{{ proxmox_storage_optimizations.zfs_options.xattr }}"
+  with_items: "{{ zfs_datasets | default([]) }}"
+  when: proxmox_storage_optimizations.zfs_options is defined
+  tags: ["system", "storage"]
+
+# Security Configuration
+# -----------------------------------------------------------------------------
+- name: Configure SSH security
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: "0600"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: restart sshd
+  tags: ["system", "security"]
+
+- name: Configure kernel module blacklist
+  ansible.builtin.template:
+    src: modules.conf.j2
+    dest: /etc/modprobe.d/blacklist-proxmox.conf
+    mode: "0644"
+  when: proxmox_security.kernel.disable_modules | length > 0
+  tags: ["system", "security"]
+
+- name: Configure system limits
+  ansible.builtin.pam_limits:
+    domain: "*"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  with_items:
+    - { type: "-", item: "nproc", value: "{{ proxmox_security.limits.nproc }}" }
+    - {
+        type: "-",
+        item: "nofile",
+        value: "{{ proxmox_security.limits.nofile }}",
+      }
+    - {
+        type: "-",
+        item: "memlock",
+        value: "{{ proxmox_security.limits.memlock }}",
+      }
+  tags: ["system", "security"]
+
+# Monitoring Configuration
+# -----------------------------------------------------------------------------
+- name: Install monitoring tools
+  ansible.builtin.apt:
+    name:
+      - smartmontools
+      - zfsutils-linux
+    state: present
+  tags: ["system", "monitoring"]
+
+- name: Configure SMART monitoring
+  ansible.builtin.template:
+    src: smartd.conf.j2
+    dest: /etc/smartd.conf
+    mode: "0644"
+  notify: restart smartd
+  when: proxmox_monitoring.smart_enabled | bool
+  tags: ["system", "monitoring"]
+
+- name: Configure ZFS scrub schedule
+  ansible.builtin.cron:
+    name: "zfs scrub"
+    job: "zpool scrub rpool"
+    special_time: "{{ proxmox_monitoring.zfs_scrub_schedule }}"
+  when: proxmox_monitoring.zfs_scrub_schedule is defined
+  tags: ["system", "monitoring"]
+
+# Power Management
+# -----------------------------------------------------------------------------
+- name: Configure power management
+  ansible.builtin.template:
+    src: power.conf.j2
+    dest: /etc/tmpfiles.d/power-management.conf
+    mode: "0644"
+  notify: apply power settings
+  tags: ["system", "power"]

@@ -1,0 +1,20 @@
+# Log2Ram Configuration
+# Managed by Ansible
+
+# Size of the RAM folder
+SIZE={{ proxmox_logging.ram_size }}
+
+# Path to store logs
+PATH_DISK=/var/log
+
+# Mount point for RAM disk
+PATH_RAM={{ proxmox_logging.ram_mount }}
+
+# Use rsync instead of cp
+USE_RSYNC=true
+
+# Enable compression of backup
+COMP_ALG={{ 'zstd' if proxmox_logging.ram_compress else 'none' }}
+
+# Additional paths to create in RAM
+FOLDERS="{{ proxmox_logging.paths | join(' ') }}" 

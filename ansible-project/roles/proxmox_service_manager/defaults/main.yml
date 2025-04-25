@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Proxmox Service Manager Role Default Variables
+# =============================================================================
+
+# Service Information
+# -----------------------------------------------------------------------------
+service_name: ""                      # Name of the service to manage
+service_description: ""               # Description of the service
+service_version: "latest"             # Version of the service to install
+
+# Package Management
+# -----------------------------------------------------------------------------
+service_dependencies: []              # List of package dependencies
+service_package_name: ""              # Name of the main service package
+service_repository_enabled: false     # Whether to add a custom repository
+service_repository_key_url: ""        # URL for the repository GPG key
+service_repository_key_id: ""         # GPG key ID for the repository
+service_repository_url: ""            # Repository URL
+service_repository_distribution: ""    # Repository distribution (e.g., focal)
+service_repository_components: []      # Repository components (e.g., [main])
+
+# Service Configuration
+# -----------------------------------------------------------------------------
+service_config_dir: ""               # Directory for service configuration
+service_config_owner: "root"         # Owner of config files
+service_config_group: "root"         # Group of config files
+service_config_mode: "0644"          # File permissions for config files
+service_config_template: ""          # Template for service configuration
+service_environment_vars: {}         # Environment variables for the service
+
+# Service Unit Configuration
+# -----------------------------------------------------------------------------
+service_unit_template: ""            # Template for systemd unit file
+service_unit_override: false         # Whether to override existing unit file
+service_restart_on_change: true      # Whether to restart on config changes
+service_enabled: true                # Whether to enable service at boot
+service_state: "started"             # Desired service state (started/stopped)
+
+# Service Networking
+# -----------------------------------------------------------------------------
+service_ports: []                    # List of ports to expose
+service_bind_address: "0.0.0.0"      # Address to bind service to
+service_firewall_rules: []           # List of firewall rules to apply
+
+# Service Logging
+# -----------------------------------------------------------------------------
+service_log_dir: ""                  # Directory for service logs
+service_log_level: "info"            # Logging level
+service_syslog_enabled: true         # Whether to use syslog
+service_log_rotation_enabled: true   # Whether to enable log rotation 

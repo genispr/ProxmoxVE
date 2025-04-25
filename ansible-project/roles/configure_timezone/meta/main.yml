@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: configure_timezone
+  author: ProxmoxVE Team
+  description: Configures system timezone across different types of hosts and containers
+  license: MIT
+  min_ansible_version: 2.9
+
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+    - name: EL  # Enterprise Linux
+      versions:
+        - all
+
+  galaxy_tags:
+    - system
+    - timezone
+    - configuration
+    - container
+    - lxc
+    - proxmox
+
+dependencies: [] 

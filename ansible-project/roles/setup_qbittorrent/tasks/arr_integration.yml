@@ -1,0 +1,72 @@
+---
+# *arr Integration tasks for qBittorrent
+
+- name: Create media directories for *arr integration
+  ansible.builtin.file:
+    path: "{{ qbittorrent.downloads.save_path }}/{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+  loop:
+    - movies
+    - tv
+    - music
+    - books
+
+- name: Configure qBittorrent categories for *arr apps
+  ansible.builtin.blockinfile:
+    path: "{{ qbittorrent.config_path }}/categories.json"
+    create: true
+    marker: "// {mark} ANSIBLE MANAGED BLOCK - ARR INTEGRATION"
+    block: |
+      {
+        "{{ qbittorrent.arr_integration.movies_category }}": {
+          "name": "{{ qbittorrent.arr_integration.movies_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/movies"
+        },
+        "{{ qbittorrent.arr_integration.tv_category }}": {
+          "name": "{{ qbittorrent.arr_integration.tv_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/tv"
+        },
+        "{{ qbittorrent.arr_integration.music_category }}": {
+          "name": "{{ qbittorrent.arr_integration.music_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/music"
+        },
+        "{{ qbittorrent.arr_integration.books_category }}": {
+          "name": "{{ qbittorrent.arr_integration.books_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/books"
+        }
+      }
+  notify: restart qbittorrent
+
+- name: Wait for qBittorrent WebUI to be available
+  ansible.builtin.uri:
+    url: "http://{{ inventory_hostname }}:{{ qbittorrent.webui.port }}"
+    method: GET
+    user: "{{ qbittorrent.webui.username }}"
+    password: "adminadmin" # Default password
+    force_basic_auth: true
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+  when: qbittorrent.arr_integration.enabled | bool
+
+- name: Configure qBittorrent for *arr apps
+  ansible.builtin.uri:
+    url: "http://{{ inventory_hostname }}:{{ qbittorrent.webui.port }}/api/v2/app/setPreferences"
+    method: POST
+    body_format: json
+    body:
+      save_path: "{{ qbittorrent.downloads.save_path }}"
+      temp_path_enabled: true
+      temp_path: "{{ qbittorrent.downloads.incomplete_path }}"
+      preallocate_all: true
+      incomplete_files_ext: true
+    user: "{{ qbittorrent.webui.username }}"
+    password: "adminadmin" # Default password
+    force_basic_auth: true
+    status_code: 200
+  when: qbittorrent.arr_integration.enabled | bool

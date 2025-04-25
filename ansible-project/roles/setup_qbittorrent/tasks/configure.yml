@@ -1,0 +1,48 @@
+---
+# Configuration tasks for qBittorrent
+
+- name: Create qBittorrent configuration directory
+  ansible.builtin.file:
+    path: "{{ qbittorrent.config_path }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+
+- name: Configure qBittorrent
+  ansible.builtin.template:
+    src: qBittorrent.conf.j2
+    dest: "{{ qbittorrent.config_path }}/qBittorrent.conf"
+    mode: "0644"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+  notify: restart qbittorrent
+
+- name: Create categories for *arr integration
+  ansible.builtin.blockinfile:
+    path: "{{ qbittorrent.config_path }}/categories.json"
+    create: true
+    mode: "0644"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+    marker: "// {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      {
+        "{{ qbittorrent.arr_integration.movies_category }}": {
+          "name": "{{ qbittorrent.arr_integration.movies_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/movies"
+        },
+        "{{ qbittorrent.arr_integration.tv_category }}": {
+          "name": "{{ qbittorrent.arr_integration.tv_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/tv"
+        },
+        "{{ qbittorrent.arr_integration.music_category }}": {
+          "name": "{{ qbittorrent.arr_integration.music_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/music"
+        },
+        "{{ qbittorrent.arr_integration.books_category }}": {
+          "name": "{{ qbittorrent.arr_integration.books_category }}",
+          "savePath": "{{ qbittorrent.downloads.save_path }}/books"
+        }
+      }
+  when: qbittorrent.arr_integration.enabled | bool

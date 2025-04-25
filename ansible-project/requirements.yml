@@ -1,0 +1,71 @@
+---
+# Core collections
+collections:
+  - name: community.general
+    version: ">=7.5.0"
+  - name: ansible.posix
+    version: ">=1.5.4"
+  - name: community.docker
+    version: ">=3.7.0"
+  - name: community.crypto
+    version: ">=2.16.0"
+  - name: community.zabbix # For monitoring
+    version: "2.1.0"
+  - name: ansible.utils # Useful utilities
+    version: ">=2.11.0"
+  - name: community.proxmox
+    version: ">=1.5.0"
+  - name: community.grafana
+    version: ">=1.5.4"
+  - name: community.postgresql
+    version: ">=2.4.0"
+  - name: community.mysql
+    version: ">=3.7.2"
+  - name: ansible.netcommon
+    version: ">=5.1.1"
+
+# External and infrastructure roles
+roles:
+  # Existing roles
+  - name: geerlingguy.zabbix
+    version: "2.1.0"
+
+  # System management
+  - src: geerlingguy.security
+    version: ">=3.0.0"
+  - src: geerlingguy.ntp
+    version: ">=2.3.0"
+  - src: geerlingguy.pip
+    version: ">=3.1.0"
+
+  # Container and virtualization
+  - src: geerlingguy.docker
+    version: ">=7.0.1"
+  - src: geerlingguy.containerd
+    version: ">=1.1.0"
+
+  # Databases
+  - src: geerlingguy.mysql
+    version: ">=3.5.0"
+  - src: geerlingguy.postgresql
+    version: ">=3.5.0"
+
+  # Monitoring
+  - src: cloudalchemy.node_exporter
+    version: ">=2.0.0"
+  - src: cloudalchemy.prometheus
+    version: ">=2.0.0"
+  - src: cloudalchemy.grafana
+    version: ">=0.17.0"
+
+  # Networking
+  - src: geerlingguy.firewall
+    version: ">=2.5.0"
+  - src: geerlingguy.nginx
+    version: ">=3.2.0"
+
+  # Storage
+  - src: geerlingguy.nfs
+    version: ">=2.0.0"
+  - src: geerlingguy.samba
+    version: ">=3.1.0"

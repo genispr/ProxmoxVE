@@ -1,0 +1,24 @@
+---
+# Configure download client in individual *arr application
+
+- name: Configure qBittorrent in {{ arr_app }}
+  ansible.builtin.uri:
+    url: "http://localhost:{{ arr_apps[arr_app].port }}/api/v3/downloadclient"
+    method: POST
+    body_format: json
+    body:
+      name: "qBittorrent"
+      implementation: "QBittorrent"
+      protocol: "torrent"
+      configContract: "QBittorrentSettings"
+      enable: true
+      host: "{{ arr_download_client.host }}"
+      port: "{{ arr_download_client.port }}"
+      username: "{{ arr_download_client.username }}"
+      password: "{{ arr_download_client.password }}"
+      category: "{{ download_client_category }}"
+      useSsl: "{{ arr_download_client.ssl | default(false) }}"
+    headers:
+      X-Api-Key: "{{ arr_apps[arr_app].api_key }}"
+    status_code: [201, 400] # 400 means already exists
+  when: arr_download_client.type == "qbittorrent"

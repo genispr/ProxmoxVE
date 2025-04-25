@@ -1,11 +1,23 @@
 ---
+# Deploy Prowlarr container
 - name: Deploy Prowlarr container
   community.docker.docker_container:
-    name: prowlarr
-    image: "{{ prowlarr_image | default('ghcr.io/linuxserver/prowlarr:latest') }}"
+    name: "{{ arr_apps.prowlarr.container_name }}"
+    image: "{{ arr_apps.prowlarr.image }}"
     state: started
-    restart_policy: always
-    ports:
-      - "{{ prowlarr_port | default('9696:9696') }}"
+    restart_policy: unless-stopped
+    env:
+      PUID: "{{ arr_apps.prowlarr.puid | default('1000') }}"
+      PGID: "{{ arr_apps.prowlarr.pgid | default('1000') }}"
+      TZ: "{{ arr_timezone }}"
     volumes:
-      - "{{ prowlarr_config | default('/docker/prowlarr/config') }}:/config"
+      - "{{ arr_config_base }}/prowlarr:/config"
+    ports:
+      - "{{ arr_apps.prowlarr.port }}:9696"
+    networks:
+      - name: "{{ arr_docker_network_name }}"
+    labels:
+      com.github.containers.toolbox: false
+    memory: "{{ arr_apps.prowlarr.memory | default('1g') }}"
+    memory_swap: "{{ arr_apps.prowlarr.memory_swap | default('-1') }}"
+    cpu_shares: "{{ arr_apps.prowlarr.cpu_shares | default(1024) }}"

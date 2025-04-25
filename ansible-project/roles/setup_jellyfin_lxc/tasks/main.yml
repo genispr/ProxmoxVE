@@ -6,68 +6,126 @@
 # timezone synchronization, and web package management.
 # Finally, it installs the Jellyfin package and ensures the service is enabled and started.
 
-- name: Ensure prerequisites are installed (apt-transport-https, gpg, sudo)
+# Set LXC container parameters
+- name: Set LXC container parameters
+  ansible.builtin.set_fact:
+    lxc_params:
+      name: "{{ jellyfin_lxc_name }}"
+      id: "{{ jellyfin_lxc_id | default(lookup('pipe','pvesh get /cluster/nextid') | trim) }}"
+      template: "{{ jellyfin_lxc_template }}"
+      memory: "{{ jellyfin_lxc_memory }}"
+      swap: "{{ jellyfin_lxc_swap }}"
+      cores: "{{ jellyfin_lxc_cores }}"
+      disk_size: "{{ jellyfin_lxc_disk_size }}"
+      features: "{{ jellyfin_lxc_features }}"
+      description: |
+        Jellyfin Media Server LXC Container
+        Created: {{ ansible_date_time.iso8601 }}
+
+# Prepare container environment
+- name: Install prerequisites
   ansible.builtin.apt:
     name:
       - apt-transport-https
       - gpg
       - sudo
+      - "{{ 'mc' if jellyfin_install_mc | bool else [] }}"
     state: present
-    update_cache: yes
+    update_cache: true
 
-- name: Install mc (Midnight Commander) if requested
-  ansible.builtin.apt:
-    name: mc
-    state: present
-  when: jellyfin_install_mc
+# Configure Jellyfin repository
+- name: Configure Jellyfin repository
+  block:
+    - name: Add Jellyfin APT GPG key
+      ansible.builtin.apt_key:
+        url: "{{ jellyfin_apt_key_url }}"
+        keyring: /etc/apt/trusted.gpg.d/jellyfin.gpg
+        state: present
 
-- name: Add Jellyfin APT GPG key
-  ansible.builtin.apt_key:
-    url: "{{ jellyfin_apt_key_url }}"
-    keyring: /etc/apt/trusted.gpg.d/jellyfin.gpg
-    state: present
+    - name: Add Jellyfin APT repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] {{ jellyfin_apt_repo_url }} {{ jellyfin_apt_repo_suite }} {{ jellyfin_apt_repo_component }}"
+        filename: jellyfin
+        state: present
+        update_cache: true
+      register: apt_repo_added
 
-- name: Add Jellyfin APT repository
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64] {{ jellyfin_apt_repo_url }} {{ jellyfin_apt_repo_suite }} {{ jellyfin_apt_repo_component }}"
-    filename: jellyfin
-    state: present
-    update_cache: yes
-  register: apt_repo_added
-
-- name: Install ffmpeg if requested
+# Install FFmpeg
+- name: Install FFmpeg
   ansible.builtin.apt:
     name: ffmpeg
     state: present
-  when: jellyfin_install_ffmpeg
+  when: jellyfin_install_ffmpeg | bool
 
-# --- Optional: Intel QSV Setup ---
-- name: Include Intel QSV tasks
-  ansible.builtin.include_tasks: intel_qsv.yml
-  when: jellyfin_setup_intel_qsv
-# --- End Optional: Intel QSV Setup ---
+# Configure hardware acceleration
+- name: Configure hardware acceleration
+  block:
+    - name: Install Intel drivers
+      ansible.builtin.include_tasks: intel_drivers.yml
+      when: jellyfin_install_intel_drivers | bool
 
-# --- Optional: Timezone Sync ---
-- name: Include timezone sync tasks
-  ansible.builtin.include_tasks: timezone.yml
-  when: jellyfin_synchronize_timezone
-# --- End Optional: Timezone Sync ---
+    - name: Install NVIDIA drivers
+      ansible.builtin.include_tasks: nvidia_drivers.yml
+      when: jellyfin_install_nvidia_drivers | bool
 
-- name: Install Jellyfin package
+# Create media directories
+- name: Create media directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ jellyfin_user }}"
+    group: "{{ jellyfin_group }}"
+    mode: "0755"
+  loop:
+    - "{{ jellyfin_config_dir }}"
+    - "{{ jellyfin_data_dir }}"
+    - "{{ jellyfin_log_dir }}"
+    - "{{ jellyfin_cache_dir }}"
+    - "{{ jellyfin_media_paths.movies }}"
+    - "{{ jellyfin_media_paths.tv }}"
+    - "{{ jellyfin_media_paths.music }}"
+    - "{{ jellyfin_transcoding_path }}"
+
+# Install and configure Jellyfin
+- name: Install Jellyfin
   ansible.builtin.apt:
-    name: "jellyfin{{ '=' + jellyfin_package_version if jellyfin_package_version != 'latest' else '' }}"
+    name: "jellyfin{{ '=' + jellyfin_version if jellyfin_version != 'latest' else '' }}"
     state: present
     update_cache: "{{ apt_repo_added.changed | default(false) | bool }}"
   notify: restart jellyfin
 
-- name: Ensure Jellyfin service is started and enabled
-  ansible.builtin.systemd:
-    name: jellyfin
-    state: started
-    enabled: true
+# Configure Jellyfin service
+- name: Configure Jellyfin service
+  block:
+    - name: Create Jellyfin service override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/jellyfin.service.d
+        state: directory
+        mode: "0755"
 
-# --- Optional: Jellyfin Web Package Management ---
-- name: Include Jellyfin web package management tasks
-  ansible.builtin.include_tasks: web_package.yml
-  when: jellyfin_manage_web_package
-# --- End Optional: Jellyfin Web Package Management ---
+    - name: Configure Jellyfin service overrides
+      ansible.builtin.template:
+        src: jellyfin.service.override.j2
+        dest: /etc/systemd/system/jellyfin.service.d/override.conf
+        mode: "0644"
+      notify: restart jellyfin
+
+    - name: Ensure Jellyfin service is enabled and started
+      ansible.builtin.systemd:
+        name: jellyfin
+        state: started
+        enabled: true
+        daemon_reload: true
+
+# Configure storage and mount points
+- name: Configure storage and mount points
+  import_tasks: configure_storage.yml
+  tags: 
+    - jellyfin
+    - storage
+
+handlers:
+  - name: restart jellyfin
+    ansible.builtin.systemd:
+      name: jellyfin
+      state: restarted

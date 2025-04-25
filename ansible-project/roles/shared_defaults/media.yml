@@ -1,0 +1,51 @@
+---
+# Shared media-related defaults for all media roles
+
+# Base paths
+media_base_path: "/media"
+media_config_base: "/config"
+media_downloads_base: "{{ media_base_path }}/Downloads"
+
+# Media library paths
+media_library:
+  movies:
+    path: "{{ media_base_path }}/Movies"
+    permissions: "0755"
+  tv:
+    path: "{{ media_base_path }}/TV Shows"
+    permissions: "0755"
+  music:
+    path: "{{ media_base_path }}/Music"
+    permissions: "0755"
+  books:
+    path: "{{ media_base_path }}/Books"
+    permissions: "0755"
+
+# Download paths
+media_downloads:
+  complete: "{{ media_downloads_base }}/complete"
+  incomplete: "{{ media_downloads_base }}/incomplete"
+  watch: "{{ media_downloads_base }}/watch"
+  torrents: "{{ media_downloads_base }}/torrents"
+
+# User and group settings
+media_user_id: "1000"
+media_group_id: "1000"
+media_user_name: "media"
+media_group_name: "media"
+
+# LXC container defaults
+media_lxc_memory: "2048"
+media_lxc_swap: "1024"
+media_lxc_cores: "2"
+media_lxc_disk_size: "16G"
+
+# Common LXC features
+media_lxc_features:
+  nesting: false # Only true if needed (e.g., Docker)
+  mount: "nfs,cifs"
+  device: false # Only true if needed (e.g., Jellyfin hardware transcoding)
+
+# Network settings
+media_network_name: "media-network"
+media_network_subnet: "172.20.0.0/16"

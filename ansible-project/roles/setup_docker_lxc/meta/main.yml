@@ -17,4 +17,5 @@ galaxy_info:
     - lxc
     - container
 
-dependencies: [] # No hard role dependencies, relies on a configured LXC target
+dependencies:
+  - role: proxmox

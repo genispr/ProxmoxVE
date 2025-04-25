@@ -1,0 +1,18 @@
+---
+# API tokens and credentials
+vault_proxmox_api_token_id: "ansible@pve!ansible"
+vault_proxmox_api_token_secret: "your-token-secret-here"
+
+# SSH keys
+vault_ssh_keys:
+  - name: "admin"
+    key: "ssh-rsa AAAAB... your-key-here"
+
+# Application secrets
+vault_vaultwarden_admin_token: "your-admin-token-here"
+vault_jellyfin_api_key: "your-api-key-here"
+
+# Backup credentials
+vault_backup_credentials:
+  username: "backup-user"
+  password: "your-backup-password-here"

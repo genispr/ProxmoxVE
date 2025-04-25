@@ -1,0 +1,132 @@
+---
+# Media Stack Configuration Hub
+# This file serves as the central configuration for the entire media server stack.
+# Variables are organized by their primary role but may be used across multiple roles.
+
+# =====================
+# Shared Configuration
+# =====================
+media_stack:
+  # Base path for all media-related storage
+  base_path: "/media"
+
+  # Shared group for media access
+  group:
+    name: "mediagroup"
+    gid: 2000
+
+  # Default permissions
+  permissions:
+    mode: "0755"
+    umask: "0002"
+
+  # Remote storage configuration
+  remote_storage:
+    enabled: false
+    type: "nfs" # Options: nfs, cifs
+    server: ""
+    share_path: ""
+    mount_point: "{{ media_stack.base_path }}"
+    mount_opts: "defaults"
+    # CIFS specific options
+    cifs_username: ""
+    cifs_password: ""
+    cifs_domain: ""
+    # NFS specific options
+    nfs_opts: "rw,sync,hard,intr"
+
+# =======================
+# Directory Structure
+# =======================
+media_directories:
+  # Download structure (managed by qBittorrent)
+  downloads:
+    incomplete: "{{ media_stack.base_path }}/downloads/incomplete"
+    complete: "{{ media_stack.base_path }}/downloads/complete"
+    categories:
+      movies: "{{ media_stack.base_path }}/downloads/complete/movies"
+      tv: "{{ media_stack.base_path }}/downloads/complete/tv"
+      music: "{{ media_stack.base_path }}/downloads/complete/music"
+      books: "{{ media_stack.base_path }}/downloads/complete/books"
+
+  # Media library structure (managed by *arr apps)
+  library:
+    movies: "{{ media_stack.base_path }}/media/Movies"
+    tv: "{{ media_stack.base_path }}/media/TV"
+    music: "{{ media_stack.base_path }}/media/Music"
+    books:
+      root: "{{ media_stack.base_path }}/media/Books"
+      ebooks: "{{ media_stack.base_path }}/media/Books/eBooks"
+      audiobooks: "{{ media_stack.base_path }}/media/Books/Audiobooks"
+
+# =======================
+# Service Configuration
+# =======================
+media_services:
+  # qBittorrent Configuration
+  qbittorrent:
+    user: "qbittorrent"
+    uid: 2001
+    host: "qbittorrent"
+    port: 8080
+    config_path: "/config"
+    username: "admin"
+    password: "adminadmin" # Should be overridden in vault
+
+  # *Arr Apps Configuration
+  arr_apps:
+    user: "arruser"
+    uid: 2002
+    config_base: "/config"
+    ports:
+      radarr: 7878
+      sonarr: 8989
+      lidarr: 8686
+      readarr: 8787
+      prowlarr: 9696
+    images:
+      radarr: "linuxserver/radarr:latest"
+      sonarr: "linuxserver/sonarr:latest"
+      lidarr: "linuxserver/lidarr:latest"
+      readarr: "linuxserver/readarr:latest"
+      prowlarr: "linuxserver/prowlarr:latest"
+
+  # Jellyfin Configuration
+  jellyfin:
+    user: "jellyfin"
+    uid: 2003
+    config_path: "/config"
+    cache_path: "/cache"
+    transcodes_path: "/transcodes"
+    ports:
+      http: 8096
+      https: 8920
+
+# =======================
+# LXC Container Settings
+# =======================
+media_containers:
+  qbittorrent:
+    memory: 2048
+    cores: 2
+    disk: "20G"
+    features:
+      nesting: false
+      mount: "nfs,cifs"
+
+  arr_suite:
+    memory: 4096
+    cores: 2
+    disk: "20G"
+    features:
+      nesting: true
+      mount: "nfs,cifs"
+
+  jellyfin:
+    memory: 4096
+    cores: 4
+    disk: "32G"
+    features:
+      nesting: false
+      mount: "nfs,cifs"
+      device: true # For hardware transcoding

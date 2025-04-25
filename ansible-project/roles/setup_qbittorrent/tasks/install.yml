@@ -1,0 +1,44 @@
+---
+# Installation tasks for qBittorrent
+
+- name: Create qBittorrent directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+  loop:
+    - "{{ qbittorrent.install_path }}"
+    - "{{ qbittorrent.config_path }}"
+    - "{{ qbittorrent.downloads.save_path }}"
+    - "{{ qbittorrent.downloads.incomplete_path }}"
+    - "{{ qbittorrent.downloads.torrents_path }}"
+
+- name: Get latest qBittorrent release version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/userdocs/qbittorrent-nox-static/releases/latest
+    return_content: true
+  register: qbittorrent_latest
+  when: qbittorrent.version == "latest"
+
+- name: Set qBittorrent version
+  ansible.builtin.set_fact:
+    qbittorrent_version: "{{ qbittorrent_latest.json.tag_name if qbittorrent.version == 'latest' else qbittorrent.version }}"
+
+- name: Download qBittorrent binary
+  ansible.builtin.get_url:
+    url: "https://github.com/userdocs/qbittorrent-nox-static/releases/download/{{ qbittorrent_version }}/x86_64-qbittorrent-nox"
+    dest: "{{ qbittorrent.install_path }}/qbittorrent-nox"
+    mode: "0755"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"
+  register: qbittorrent_binary
+
+- name: Store qBittorrent version
+  ansible.builtin.copy:
+    content: "{{ qbittorrent_version }}"
+    dest: "{{ qbittorrent.install_path }}/version.txt"
+    mode: "0644"
+    owner: "{{ qbittorrent.service.user }}"
+    group: "{{ qbittorrent.service.group }}"

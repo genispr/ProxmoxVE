@@ -1,0 +1,44 @@
+# SSH Configuration for Proxmox VE
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Security Settings
+Protocol 2
+PermitRootLogin {{ proxmox_security.ssh.permit_root_login | default('prohibit-password') }}
+PasswordAuthentication {{ proxmox_security.ssh.password_auth | default('no') | string | lower }}
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Connection Settings
+Port {{ proxmox_security.ssh.port | default(22) }}
+AddressFamily {{ proxmox_security.ssh.address_family | default('any') }}
+ListenAddress {{ proxmox_security.ssh.listen_address | default('0.0.0.0') }}
+
+# Authentication Settings
+MaxAuthTries {{ proxmox_security.ssh.max_auth_tries | default(3) }}
+LoginGraceTime {{ proxmox_security.ssh.login_grace_time | default('1m') }}
+MaxStartups {{ proxmox_security.ssh.max_startups | default('10:30:60') }}
+
+# Security Features
+X11Forwarding {{ proxmox_security.ssh.x11_forwarding | default('no') | string | lower }}
+AllowTcpForwarding {{ proxmox_security.ssh.allow_tcp_forwarding | default('no') | string | lower }}
+AllowAgentForwarding {{ proxmox_security.ssh.allow_agent_forwarding | default('no') | string | lower }}
+PermitEmptyPasswords no
+IgnoreRhosts yes
+HostbasedAuthentication no
+UsePAM yes
+
+# Logging
+SyslogFacility AUTH
+LogLevel {{ proxmox_security.ssh.log_level | default('INFO') }}
+
+# Ciphers and Key Exchange
+Ciphers {{ proxmox_security.ssh.ciphers | default('chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr') }}
+KexAlgorithms {{ proxmox_security.ssh.kex_algorithms | default('curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256') }}
+MACs {{ proxmox_security.ssh.macs | default('hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com') }}
+
+# Client Alive Settings
+ClientAliveInterval {{ proxmox_security.ssh.client_alive_interval | default(300) }}
+ClientAliveCountMax {{ proxmox_security.ssh.client_alive_count_max | default(3) }}
+
+# Banner
+Banner {{ proxmox_security.ssh.banner_path | default('none') }} 

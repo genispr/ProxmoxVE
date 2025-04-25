@@ -1,101 +1,123 @@
 ---
-- name: "Ensure the play is run as root"
-  shell: |
-    [ "$(id -u)" -eq 0 ] || { echo "Please run as root"; exit 1; }
-  changed_when: false
+# Pre-flight checks
+- name: Verify system requirements
+  block:
+    - name: Check system architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: arch_check
+      failed_when: arch_check.stdout != "amd64"
+      changed_when: false
 
-- name: "Check system architecture is amd64"
-  shell: |
-    arch=$(dpkg --print-architecture)
-    [ "$arch" = "amd64" ] || { echo "Unsupported architecture: $arch"; exit 1; }
-  changed_when: false
+    - name: Verify Proxmox VE version
+      ansible.builtin.shell: pveversion
+      register: pve_version
+      failed_when: not pve_version.stdout is regex("pve-manager/[7-8]\\.[0-9]+")
+      changed_when: false
 
-- name: "Verify compatible Proxmox VE version"
-  shell: |
-    if ! pveversion | grep -Eq "pve-manager/8\.[1-4](\.[0-9]+)*"; then
-      echo "Unsupported Proxmox version"; exit 1;
-    fi
-  changed_when: false
+# Download and prepare HAOS image
+- name: Download and prepare HAOS image
+  block:
+    - name: Download HAOS image
+      ansible.builtin.get_url:
+        url: "{{ haos_url }}"
+        dest: "/tmp/{{ dest_image }}.xz"
+        mode: "0644"
 
-- name: "Generate a MAC address for HAOS VM"
-  shell: |
-    GEN_MAC="02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')"
-    echo $GEN_MAC
-  register: mac_output
+    - name: Extract HAOS image
+      ansible.builtin.command:
+        cmd: "unxz /tmp/{{ dest_image }}.xz"
+        creates: "/tmp/{{ dest_image }}"
 
-- name: "Set the MAC address fact"
-  set_fact:
-    mac: "{{ mac_output.stdout | trim }}"
+    - name: Move HAOS image to template storage
+      ansible.builtin.copy:
+        src: "/tmp/{{ dest_image }}"
+        dest: "/var/lib/vz/template/iso/{{ dest_image }}"
+        remote_src: true
+        mode: "0644"
 
-- name: "Display VM configuration"
-  debug:
+# Create VM using proxmox role
+- name: Set VM creation parameters
+  ansible.builtin.set_fact:
+    vm_params:
+      name: "{{ haos_vm_name }}"
+      id: "{{ haos_vm_id | default(lookup('pipe','pvesh get /cluster/nextid') | trim) }}"
+      memory: "{{ haos_vm_memory }}"
+      cores: "{{ haos_vm_cores }}"
+      disk_size: "{{ haos_vm_disk_size }}"
+      template: "/var/lib/vz/template/iso/{{ dest_image }}"
+      network: "{{ haos_vm_network }}"
+      boot: "order=scsi0"
+      ostype: "l26"
+      features:
+        machine: "q35"
+        bios: "ovmf"
+      description: |
+        Home Assistant OS VM
+        Version: {{ haos_version }}
+        Created: {{ ansible_date_time.iso8601 }}
+
+# Configure VM-specific settings
+- name: Configure HAOS-specific settings
+  block:
+    - name: Configure EFI disk
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -efidisk0 {{ proxmox_vm_defaults.storage }}:{{ vm_params.id }}/vm-{{ vm_params.id }}-disk-0,efitype=4m
+      when: vm_params.id is defined
+
+    - name: Configure serial port
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -serial0 socket
+      when: vm_params.id is defined
+
+    - name: Configure USB passthrough
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -usb0 host={{ item }}
+      loop: "{{ haos_usb_devices }}"
+      when: 
+        - vm_params.id is defined
+        - haos_usb_devices | length > 0
+
+    - name: Configure Z-Wave device
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -usb1 host=0658:0200
+      when: 
+        - vm_params.id is defined
+        - haos_enable_zwave | bool
+
+    - name: Configure Zigbee device
+      ansible.builtin.command:
+        cmd: >
+          qm set {{ vm_params.id }}
+          -usb2 host=0451:16a8
+      when:
+        - vm_params.id is defined
+        - haos_enable_zigbee | bool
+
+# Start VM if requested
+- name: Start Home Assistant OS VM
+  ansible.builtin.command:
+    cmd: "qm start {{ vm_params.id }}"
+  when:
+    - vm_params.id is defined
+    - start_vm | default(true) | bool
+  register: start_result
+  changed_when: start_result.rc == 0
+  failed_when: start_result.rc != 0 and "already running" not in start_result.stderr
+
+- name: Display completion message
+  ansible.builtin.debug:
     msg: |
-      Using VMID: {{ vmid }}
-      Hostname: {{ hostname }}
-      CPU Cores: {{ cores }}
-      RAM: {{ ram }} MiB
-      Bridge: {{ bridge }}
-      MAC Address: {{ mac }}
-      Disk Size: {{ disk_size }}
-      HAOS Version: {{ haos_version }}
-
-- name: "Validate storage pools by listing available image storages"
-  shell: |
-    pvesm status -content images | awk 'NR>1'
-  register: storage_list
-
-- name: "Fail if no valid storage pools detected"
-  fail:
-    msg: "Unable to detect a valid storage location."
-  when: storage_list.stdout == ""
-
-- name: "Select storage pool (default to first entry)"
-  set_fact:
-    storage: "{{ (storage_list.stdout_lines[0] | regex_search('^(\\S+)')).group(1) }}"
-  when: storage_list.stdout != ""
-
-- name: "Create HAOS VM using create_vm role"
-  include_role:
-    name: create_vm
-  vars:
-    vmid: "{{ vmid }}"
-    hostname: "{{ hostname }}"
-    cores: "{{ cores }}"
-    ram: "{{ ram }}"
-    disk_size: "{{ disk_size }}"
-    storage: "{{ storage | default('local-lvm') }}"
-    bridge: "{{ bridge | default('vmbr0') }}"
-    os_type: "l26"
-    onboot: 1
-    create_vm_download_image: true
-    image_url: "{{ haos_url }}"
-    dest_image: "{{ dest_image }}"
-    extracted_image: "{{ extracted_image }}"
-
-- name: "Configure HAOS VM with imported disk and description"
-  shell: |
-    qm set {{ vmid }} \
-      -efidisk0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-0,efitype=4m" \
-      -scsi0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-1,{{ disk_cache }}size={{ disk_size }}" \
-      -boot order=scsi0 \
-      -serial0 socket \
-      -description "<div align='center'>
-          <a href='https://Helper-Scripts.com' target='_blank' rel='noopener noreferrer'>
-            <img src='https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/images/logo-81x112.png' style='width:81px;height:112px;'/>
-          </a>
-          <h2>Home Assistant OS VM ({{ haos_version }})</h2>
-          </div>" 
-  register: configure_vm
-
-- name: "Resize disk if needed (HAOS)"
-  shell: qm resize {{ vmid }} scsi0 {{ disk_size }}
-  when: disk_size is defined
-
-- name: "Start HAOS VM if not already running"
-  shell: qm start {{ vmid }}
-  when: start_vm | bool
-
-- name: "Display HAOS VM creation completion message"
-  debug:
-    msg: "Completed HAOS VM creation successfully. VMID {{ vmid }} is now running."
-...
+      Home Assistant OS VM has been created successfully
+      VMID: {{ vm_params.id }}
+      Name: {{ vm_params.name }}
+      Memory: {{ vm_params.memory }}MB
+      Cores: {{ vm_params.cores }}
+      Version: {{ haos_version }}
