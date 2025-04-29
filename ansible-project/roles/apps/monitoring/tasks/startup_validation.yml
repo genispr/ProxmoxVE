@@ -1,0 +1,13 @@
+---
+- name: Validate startup sequence completion
+  assert:
+    that:
+      - "{{ lookup('vars', item + '_status', default=false) }}"
+    fail_msg: "Service {{ item }} failed to start properly"
+    success_msg: "Service {{ item }} started successfully"
+  loop:
+    - node_exporter
+    - prometheus
+    - alertmanager
+    - grafana
+  register: startup_validation

@@ -1,0 +1,23 @@
+---
+- name: Create required directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /opt/media
+    - /opt/media/downloads
+    - /opt/media/config
+    - /opt/media/media
+
+- name: Deploy media applications
+  include_tasks: "{{ item }}.yml"
+  loop:
+    - prowlarr
+    - sonarr
+    - radarr
+  when: media_stack.arr_apps[item].enabled | default(true)
+
+- name: Configure media applications
+  include_tasks: configure.yml
+  tags: ['configure']

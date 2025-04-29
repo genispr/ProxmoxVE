@@ -1,0 +1,53 @@
+---
+monitoring_network: monitoring
+monitoring_subnet: "{{ network.vlans.mgmt.subnet }}"
+monitoring_data_dir: /opt/monitoring
+monitoring_config_dir: "{{ monitoring_data_dir }}/config"
+monitoring_ssl_enabled: true
+monitoring_ssl_country: "US"
+monitoring_ssl_state: "State"
+monitoring_ssl_locality: "City"
+monitoring_ssl_organization: "Homelab"
+monitoring_ssl_days: 3650
+monitoring_auth_enabled: true
+monitoring_alerts_enabled: true
+monitoring_alert_receivers: []
+monitoring_alert_slack_webhook: "{{ monitoring_stack.alertmanager.slack_webhook }}"
+monitoring_health_check_retries: 5
+monitoring_health_check_delay: 10
+monitoring_health_check_timeout: 30
+
+monitoring_ports:
+  prometheus: 9090
+  alertmanager: 9093
+  grafana: 3000
+  node_exporter: 9100
+
+monitoring_health_paths:
+  prometheus: "/-/healthy"
+  alertmanager: "/-/healthy"
+  grafana: "/api/health"
+  node_exporter: "/metrics"
+
+monitoring_metrics:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  retention_days: 15
+
+monitoring_logs:
+  retention_days: 7
+  max_size: "100m"
+
+monitoring_startup:
+  node_exporter:
+    delay: 0
+    timeout: 30
+  prometheus:
+    delay: 10
+    timeout: 45
+  alertmanager:
+    delay: 15
+    timeout: 30
+  grafana:
+    delay: 20
+    timeout: 60

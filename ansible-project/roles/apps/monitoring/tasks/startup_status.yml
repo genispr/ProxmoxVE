@@ -1,0 +1,14 @@
+---
+- name: Generate startup report
+  template:
+    src: startup_report.j2
+    dest: "{{ monitoring_config_dir }}/startup_status.json"
+    mode: "0644"
+  vars:
+    startup_report:
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+      services:
+        node_exporter: "{{ node_exporter_status | default(false) }}"
+        prometheus: "{{ prometheus_status | default(false) }}"
+        alertmanager: "{{ alertmanager_status | default(false) }}"
+        grafana: "{{ grafana_status | default(false) }}"

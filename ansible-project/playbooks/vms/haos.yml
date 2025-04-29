@@ -1,0 +1,13 @@
+---
+- name: Deploy Home Assistant OS VM
+  hosts: proxmox
+  become: true
+
+  roles:
+    - role: apps/home_automation/haos_vm
+      vars:
+        haos_vm_name: "homeassistant"
+        haos_vm_id: 101
+        haos_vm_memory: 4096
+        haos_vm_cores: 2
+        haos_enable_usb: true

@@ -1,0 +1,11 @@
+---
+- name: Deploy Prowlarr container
+  community.docker.docker_container:
+    name: prowlarr
+    image: "linuxserver/prowlarr:{{ media_stack.arr_apps.prowlarr.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/media/config/prowlarr:/config
+    networks:
+      - name: media

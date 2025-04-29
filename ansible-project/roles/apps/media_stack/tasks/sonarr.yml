@@ -1,0 +1,13 @@
+---
+- name: Deploy Sonarr container
+  community.docker.docker_container:
+    name: sonarr
+    image: "linuxserver/sonarr:{{ media_stack.arr_apps.sonarr.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/media/config/sonarr:/config
+      - /opt/media/downloads:/downloads
+      - /opt/media/media:/media
+    networks:
+      - name: media

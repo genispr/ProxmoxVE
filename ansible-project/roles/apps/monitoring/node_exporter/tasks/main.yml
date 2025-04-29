@@ -1,0 +1,12 @@
+---
+- name: Deploy Node Exporter container
+  community.docker.docker_container:
+    name: node_exporter
+    image: "prom/node-exporter:{{ monitoring_stack.node_exporter.version }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: host
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave

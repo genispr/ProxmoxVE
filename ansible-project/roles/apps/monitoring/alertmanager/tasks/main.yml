@@ -1,0 +1,35 @@
+---
+- name: Create Alert Manager configuration directory
+  ansible.builtin.file:
+    path: "{{ monitoring_config_dir }}/alertmanager"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Alert Manager configuration
+  template:
+    src: config.yml.j2
+    dest: "{{ monitoring_config_dir }}/alertmanager/config.yml"
+    mode: '0644'
+  notify: restart alertmanager
+
+- name: Deploy Alert Manager container
+  community.docker.docker_container:
+    name: alertmanager
+    image: "prom/alertmanager:{{ monitoring_stack.alertmanager.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - "{{ monitoring_config_dir }}/alertmanager:/etc/alertmanager"
+    networks:
+      - name: "{{ monitoring_network }}"
+    log_driver: "json-file"
+    log_options:
+      max-size: "{{ monitoring_logs.max_size }}"
+      max-file: "{{ monitoring_logs.retention_days }}"
+    ports:
+      - "{{ monitoring_ports.alertmanager }}:9093"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

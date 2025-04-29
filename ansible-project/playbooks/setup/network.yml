@@ -1,0 +1,11 @@
+---
+- name: Configure Network
+  hosts: proxmox
+  become: true
+
+  vars_files:
+    - "../../vars/network.yml"
+
+  roles:
+    - role: network
+      tags: ["network"]

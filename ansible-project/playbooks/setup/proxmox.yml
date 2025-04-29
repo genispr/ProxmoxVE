@@ -1,0 +1,16 @@
+---
+- name: Configure Proxmox VE Host
+  hosts: proxmox
+  become: true
+  tags: ['setup', 'proxmox']
+  
+  vars_files:
+    - "../../vars/network.yml"
+    - "../../vars/storage.yml"
+    
+  roles:
+    - role: proxmox
+      tags: ['proxmox']
+    - role: network
+      tags: ['network']
+      when: configure_network | default(true)

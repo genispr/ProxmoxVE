@@ -1,0 +1,9 @@
+# VLAN Interfaces
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+{% for vlan, config in network.vlans.items() %}
+auto {{ config.bridge }}.{{ config.id }}
+iface {{ config.bridge }}.{{ config.id }} inet static
+    address {{ config.address | default('0.0.0.0/24') }}
+    vlan-raw-device {{ config.bridge }}
+{% endfor %}

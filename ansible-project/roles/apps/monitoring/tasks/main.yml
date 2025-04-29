@@ -1,0 +1,37 @@
+---
+- name: Verify dependencies (checks Docker container dependencies)
+  import_tasks: dependencies.yml
+  tags: ['dependencies']
+
+- name: Execute startup sequence (ensure services start in proper order)
+  import_tasks: startup_sequence.yml
+  tags: ['startup']
+
+- name: Validate startup completion (using service status checks)
+  import_tasks: startup_validation.yml
+  tags: ['validate']
+
+- name: Generate startup report (aggregate startup metrics)
+  import_tasks: startup_status.yml
+  tags: ['report']
+
+- name: Check monitoring services status (reports overall Docker container health)
+  import_tasks: service_status.yml
+  tags: ['status']
+
+- name: Verify basic network connectivity for monitoring services
+  import_tasks: network_check.yml
+  tags: ['healthcheck']
+
+- name: Verify service health endpoints (checks HTTP(S) health endpoints)
+  import_tasks: healthcheck.yml
+  tags: ['healthcheck']
+
+- name: Check metrics collection (ensures Prometheus can collect targets)
+  import_tasks: metrics.yml
+  tags: ['metrics']
+  when: monitoring_metrics_check | default(true)
+
+- name: Handle startup completion (perform recovery or final reporting)
+  import_tasks: startup_completion.yml
+  tags: ['completion']

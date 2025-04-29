@@ -1,0 +1,12 @@
+---
+- name: Configure service discovery labels
+  community.docker.docker_container:
+    name: "{{ item }}"
+    labels:
+      monitoring.enable: "true"
+      monitoring.port: "{{ monitoring[item + '_port'] }}"
+      monitoring.scheme: "{{ 'https' if monitoring_ssl_enabled else 'http' }}"
+  loop:
+    - prometheus
+    - node_exporter
+    - grafana

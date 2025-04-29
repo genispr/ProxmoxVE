@@ -1,0 +1,44 @@
+---
+# VM Creation and Management Tasks
+
+- name: "Create VM"
+  shell: |
+    qm create {{ vmid }} -agent 1 -tablet 0 -localtime 1 -bios ovmf{{ cpu_type }} \
+      -cores {{ cores }} -memory {{ ram }} -name {{ hostname }} -tags "{{ vm_tags | default('vm') }}" \
+      -net0 {{ net0_config | default('virtio,bridge=' ~ bridge ~ ',macaddr=' ~ mac ~ ',tag=Default') }} -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
+  register: create_vm
+
+- name: "Manage VM Storage"
+  block:
+    - name: "Allocate minimal disk space for boot sector"
+      shell: |
+        pvesm alloc {{ storage }} {{ vmid }} vm-{{ vmid }}-disk-0 4M
+      register: alloc_disk
+
+    - name: "Import disk image into the VM"
+      shell: |
+        qm importdisk {{ vmid }} /tmp/{{ extracted_image }} {{ storage }} -format qcow2
+      register: import_disk
+      when: extracted_image is defined
+
+    - name: "Configure VM with imported disk"
+      shell: |
+        qm set {{ vmid }} \
+          -efidisk0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-0,efitype=4m" \
+          -scsi0 "{{ storage }}:{{ vmid }}/vm-{{ vmid }}-disk-1,{{ disk_cache }}size={{ disk_size }}"
+      when: import_disk is success
+
+- name: "Configure VM Boot and Console"
+  shell: |
+    qm set {{ vmid }} \
+      -boot order=scsi0 \
+      -serial0 socket
+
+- name: "Set VM Description"
+  shell: |
+    qm set {{ vmid }} -description "{{ vm_description | default('') }}"
+
+- name: "Start VM if requested"
+  shell: |
+    qm start {{ vmid }}
+  when: start_vm | bool

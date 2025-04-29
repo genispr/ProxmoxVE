@@ -1,0 +1,50 @@
+---
+# Media Stack Configuration
+media_stack:
+  arr_apps:
+    enabled: true
+    container_id: 200
+    container_name: arr-apps
+    memory: 4096
+    cores: 2
+    disk_size: 20G
+    prowlarr:
+      enabled: true
+      version: latest
+    sonarr:
+      enabled: true
+      version: latest
+    radarr:
+      enabled: true
+      version: latest
+
+# Monitoring Stack Configuration
+monitoring_stack:
+  enabled: true
+  container_id: 300
+  prometheus:
+    enabled: true
+    retention: 30d
+    version: latest
+  grafana:
+    enabled: true
+    admin_password: "{{ vault_grafana_password }}"
+    version: latest
+  node_exporter:
+    enabled: true
+    version: latest
+  alertmanager:
+    enabled: true
+    version: latest
+    slack_webhook: "{{ vault_slack_webhook }}"
+
+# Home Automation Configuration
+home_automation:
+  haos:
+    enabled: true
+    vm_id: 101
+    memory: 4096
+    cores: 2
+    usb_devices:
+      - "0658:0200" # ZWave
+      - "0451:16a8" # Zigbee

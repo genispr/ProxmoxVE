@@ -1,0 +1,55 @@
+---
+- name: Check monitoring services connectivity
+  wait_for:
+    host: "{{ item.host }}"
+    port: "{{ monitoring_ports[item.service] }}"
+    timeout: "{{ monitoring_health_check_timeout }}"
+  loop:
+    - { host: "prometheus", service: "prometheus" }
+    - { host: "alertmanager", service: "alertmanager" }
+    - { host: "grafana", service: "grafana" }
+    - { host: "node_exporter", service: "node_exporter" }
+  register: connectivity_check
+  tags: ["healthcheck"]
+
+- name: Notify on connectivity check failure
+  debug:
+    msg: "Service {{ item.host }} failed connectivity check"
+  when: connectivity_check.failed
+  loop: "{{ connectivity_check.results }}"
+
+- name: Verify service health endpoints
+  uri:
+    url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.host }}:{{ monitoring_ports[item.service] }}{{ item.path }}"
+    status_code: 200
+    validate_certs: "{{ monitoring_ssl_enabled }}"
+  register: health_check
+  until: health_check.status == 200
+  retries: "{{ monitoring_health_check_retries }}"
+  delay: "{{ monitoring_health_check_delay }}"
+  ignore_errors: true
+  loop:
+    - { host: "prometheus", service: "prometheus", path: "/-/healthy" }
+    - { host: "alertmanager", service: "alertmanager", path: "/-/healthy" }
+    - { host: "grafana", service: "grafana", path: "/api/health" }
+  tags: ["healthcheck"]
+
+- name: Collect failed services
+  set_fact:
+    failed_services: "{{ failed_services | default([]) + [{'name': item.service}] }}"
+  when: health_check.failed
+  loop: "{{ health_check.results }}"
+
+- name: Include failure handling
+  include_tasks: handle_failures.yml
+  when: failed_services | default([]) | length > 0
+
+- name: Check service dependencies
+  uri:
+    url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.host }}:{{ monitoring_ports[item.service] }}/api/v1/targets"
+    status_code: 200
+    validate_certs: "{{ monitoring_ssl_enabled }}"
+  loop:
+    - { host: "prometheus", service: "prometheus" }
+  when: monitoring_check_dependencies | default(true)
+  tags: ["healthcheck", "dependencies"]

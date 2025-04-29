@@ -1,0 +1,33 @@
+---
+- name: Ensure correct startup sequence
+  set_fact:
+    startup_sequence:
+      - service: node_exporter
+        dependencies: []
+      - service: prometheus
+        dependencies: ["node_exporter"]
+      - service: alertmanager
+        dependencies: ["prometheus"]
+      - service: grafana
+        dependencies: ["prometheus"]
+
+- name: Execute startup sequence
+  include_tasks: start_service.yml
+  loop: "{{ startup_sequence }}"
+  loop_control:
+    loop_var: service_info
+
+- name: Verify startup completion
+  assert:
+    that:
+      - node_exporter_status | default(false)
+      - prometheus_status | default(false)
+      - alertmanager_status | default(false)
+      - grafana_status | default(false)
+    fail_msg: "Not all monitoring services started successfully"
+    success_msg: "All monitoring services started successfully"
+  tags: ["verify"]
+
+- name: Generate startup status report
+  import_tasks: startup_status.yml
+  tags: ["report"]

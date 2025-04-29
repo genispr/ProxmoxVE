@@ -1,0 +1,11 @@
+{
+  "timestamp": "{{ startup_report.timestamp }}",
+  "services": {
+    {% for service, status in startup_report.services.items() %}
+    "{{ service }}": {
+      "status": {{ status | lower }},
+      "startup_time": "{{ lookup('vars', service + '_startup_time', default='N/A') }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  }
+}

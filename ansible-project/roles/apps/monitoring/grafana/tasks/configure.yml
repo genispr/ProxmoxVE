@@ -1,0 +1,16 @@
+---
+- name: Create Grafana provisioning directories
+  ansible.builtin.file:
+    path: "/opt/grafana/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - provisioning/datasources
+    - provisioning/dashboards
+
+- name: Configure Prometheus datasource
+  template:
+    src: datasources.yml.j2
+    dest: /opt/grafana/provisioning/datasources/prometheus.yml
+    mode: "0644"
+  notify: restart grafana

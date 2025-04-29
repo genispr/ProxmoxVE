@@ -1,0 +1,15 @@
+---
+- name: Create Prometheus directories
+  ansible.builtin.file:
+    path: "/opt/prometheus"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Prometheus container
+  community.docker.docker_container:
+    name: prometheus
+    image: "prom/prometheus:{{ monitoring_stack.prometheus.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/prometheus:/etc/prometheus

@@ -1,0 +1,7 @@
+---
+- name: Deploy Media Stack
+  hosts: proxmox
+  become: true
+
+  roles:
+    - role: apps/media_stack

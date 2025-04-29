@@ -1,0 +1,17 @@
+---
+- name: Create Grafana directories
+  ansible.builtin.file:
+    path: "/opt/grafana"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Grafana container
+  community.docker.docker_container:
+    name: grafana
+    image: "grafana/grafana:{{ monitoring_stack.grafana.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/grafana:/var/lib/grafana
+    networks:
+      - name: monitoring

@@ -1,0 +1,17 @@
+---
+- name: Generate stack health summary
+  set_fact:
+    stack_health:
+      all_services_running: "{{ node_exporter_status and prometheus_status and alertmanager_status and grafana_status }}"
+      startup_duration: "{{ ansible_date_time.epoch | int - hostvars[inventory_hostname]['ansible_date_time']['epoch'] | int }}"
+      failed_services: "{{ startup_validation.results | selectattr('failed', 'true') | map(attribute='item') | list }}"
+
+- name: Report stack health
+  debug:
+    msg: |
+      Monitoring Stack Health Summary:
+      - All Services Running: {{ stack_health.all_services_running }}
+      - Total Startup Time: {{ stack_health.startup_duration }}s
+      {% if stack_health.failed_services | length > 0 %}
+      - Failed Services: {{ stack_health.failed_services | join(', ') }}
+      {% endif %}

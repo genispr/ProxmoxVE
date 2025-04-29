@@ -1,0 +1,22 @@
+---
+- name: Check metrics collection status
+  uri:
+    url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.host }}:{{ monitoring_ports[item.service] }}/api/v1/targets"
+    validate_certs: "{{ monitoring_ssl_enabled }}"
+    return_content: yes
+    status_code: 200 # Enforce that the endpoint returns 200 OK
+  register: metrics_status
+  loop:
+    - { host: "prometheus", service: "prometheus" }
+  failed_when: metrics_status is failed # Fail if the endpoint cannot be reached
+
+- name: Evaluate metrics health
+  set_fact:
+    unhealthy_targets: "{{ metrics_status.json.data.activeTargets | selectattr('health', 'equalto', 'down') | list }}"
+  when: metrics_status is defined and metrics_status.json is defined
+
+- name: Report unhealthy targets
+  debug:
+    msg: "Target {{ item.labels.instance }} is down: {{ item.lastError }}"
+  loop: "{{ unhealthy_targets | default([]) }}"
+  when: unhealthy_targets is defined and unhealthy_targets | length > 0

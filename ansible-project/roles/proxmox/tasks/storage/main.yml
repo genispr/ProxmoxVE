@@ -1,0 +1,21 @@
+---
+# Storage Configuration Tasks
+
+- name: Include storage backend configuration
+  ansible.builtin.import_tasks: backends.yml
+  tags: ["storage", "backends"]
+
+- name: Include ZFS configuration
+  ansible.builtin.import_tasks: zfs.yml
+  when: storage_config.zfs.enabled | default(false)
+  tags: ["storage", "zfs"]
+
+- name: Include LVM configuration 
+  ansible.builtin.import_tasks: lvm.yml
+  when: storage_config.lvm.enabled | default(false)
+  tags: ["storage", "lvm"]
+
+- name: Include storage monitoring
+  ansible.builtin.import_tasks: monitoring.yml
+  when: storage_config.monitoring.enabled | default(false)
+  tags: ["storage", "monitoring"]

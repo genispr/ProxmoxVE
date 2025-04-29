@@ -1,0 +1,13 @@
+---
+- name: Deploy Radarr container
+  community.docker.docker_container:
+    name: radarr
+    image: "linuxserver/radarr:{{ media_stack.arr_apps.radarr.version }}"
+    state: started
+    restart_policy: unless-stopped
+    volumes:
+      - /opt/media/config/radarr:/config
+      - /opt/media/downloads:/downloads
+      - /opt/media/media:/media
+    networks:
+      - name: media

@@ -1,0 +1,64 @@
+---
+- name: Start monitoring services in order
+  block:
+    - name: Start service
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - node_exporter
+        - prometheus
+        - alertmanager
+        - grafana
+
+    - name: Wait for service startup
+      wait_for:
+        host: "{{ item.key }}"
+        port: "{{ monitoring_ports[item.key] }}"
+        timeout: "{{ item.value.timeout }}"
+        delay: "{{ item.value.delay }}"
+      loop: "{{ monitoring_startup | dict2items }}"
+
+- name: Validate service startup
+  uri:
+    url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.key }}:{{ monitoring_ports[item.key] }}{{ item.value.health_path }}"
+    validate_certs: "{{ monitoring_ssl_enabled }}"
+    status_code: 200
+  register: startup_validation
+  until: startup_validation.status == 200
+  retries: 3
+  delay: 5
+  loop:
+    - { key: "prometheus", value: { health_path: "/-/healthy" } }
+    - { key: "alertmanager", value: { health_path: "/-/healthy" } }
+    - { key: "grafana", value: { health_path: "/api/health" } }
+
+- name: Report startup status
+  debug:
+    msg: "Service {{ item.key }} startup {{ 'successful' if item.status == 200 else 'failed' }}"
+  loop: "{{ startup_validation.results }}"
+
+- name: Handle failed startups
+  block:
+    - name: Attempt service recovery
+      community.docker.docker_container:
+        name: "{{ item.key }}"
+        state: started
+        restart: yes
+      when: item.status != 200
+      loop: "{{ startup_validation.results }}"
+
+    - name: Revalidate recovered services
+      uri:
+        url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.key }}:{{ monitoring_ports[item.key] }}{{ item.value.health_path }}"
+        validate_certs: "{{ monitoring_ssl_enabled }}"
+        status_code: 200
+      register: recovery_validation
+      when: item.status != 200
+      loop: "{{ startup_validation.results }}"
+  rescue:
+    - name: Report unrecoverable failures
+      fail:
+        msg: "Service {{ item.key }} failed to recover after startup failure"
+      when: item.status != 200
+      loop: "{{ recovery_validation.results }}"

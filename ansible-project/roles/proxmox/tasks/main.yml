@@ -13,6 +13,10 @@
   ansible.builtin.import_tasks: repository.yml
   tags: ["repository", "pre-install"]
 
+- name: Include preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: ['always']
+
 # System Configuration
 # -----------------------------------------------------------------------------
 - name: Configure base system
@@ -43,6 +47,10 @@
   tags: ["storage"]
   when: storage_config is defined
 
+- name: Include storage management tasks
+  ansible.builtin.import_tasks: storage.yml
+  tags: ['storage']
+
 # Virtualization
 # -----------------------------------------------------------------------------
 - name: Configure virtual machines
@@ -59,6 +67,14 @@
   ansible.builtin.import_tasks: resources.yml
   tags: ["resources", "virtualization"]
   when: proxmox_vm is defined
+
+- name: Include VM management tasks
+  ansible.builtin.import_tasks: vm.yml
+  tags: ['vm']
+
+- name: Include LXC management tasks
+  ansible.builtin.import_tasks: lxc.yml
+  tags: ['lxc']
 
 # High Availability
 # -----------------------------------------------------------------------------
@@ -102,4 +118,4 @@
   tags:
     - proxmox
     - vm
-    - resources 
+    - resources

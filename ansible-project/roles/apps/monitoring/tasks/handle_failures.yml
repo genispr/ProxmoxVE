@@ -1,0 +1,21 @@
+---
+- name: Handle service failures
+  block:
+    - name: Gather service status
+      command: "docker inspect {{ item.name }} --format='{{.State.Status}}'"
+      register: service_status
+      loop: "{{ failed_services }}"
+      changed_when: false
+
+    - name: Attempt service recovery
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        state: started
+        restart: yes
+      when: service_status.stdout != 'running'
+      loop: "{{ failed_services }}"
+
+    - name: Send failure notification
+      debug:
+        msg: "Service {{ item.name }} failed health check and recovery attempted"
+      loop: "{{ failed_services }}"

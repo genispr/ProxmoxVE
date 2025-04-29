@@ -1,0 +1,26 @@
+---
+- name: Check monitoring services health
+  uri:
+    url: "https://{{ item.host }}:{{ item.port }}{{ item.path }}"
+    validate_certs: false
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 30
+  delay: 10
+  loop:
+    - {
+        host: "prometheus",
+        port: "{{ monitoring.prometheus_port }}",
+        path: "/-/healthy",
+      }
+    - {
+        host: "node_exporter",
+        port: "{{ monitoring.node_exporter_port }}",
+        path: "/metrics",
+      }
+    - {
+        host: "grafana",
+        port: "{{ monitoring.grafana_port }}",
+        path: "/api/health",
+      }

@@ -1,0 +1,13 @@
+---
+- name: Configure network bridges
+  import_tasks: bridges.yml
+
+- name: Configure VLANs
+  import_tasks: vlans.yml
+
+- name: Configure basic networking
+  ansible.builtin.template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    mode: '0644'
+  notify: restart networking

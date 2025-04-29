@@ -1,0 +1,25 @@
+---
+- name: Deploy Monitoring Stack
+  hosts: proxmox
+  become: true
+
+  vars_files:
+    - "../../vars/applications.yml"
+    - "../../vars/network.yml"
+
+  roles:
+    - role: apps/monitoring/prometheus
+      when: monitoring_stack.prometheus.enabled
+      tags: ["prometheus"]
+
+    - role: apps/monitoring/grafana
+      when: monitoring_stack.grafana.enabled
+      tags: ["grafana"]
+
+    - role: apps/monitoring/node_exporter
+      when: monitoring_stack.node_exporter.enabled
+      tags: ["node_exporter"]
+
+    - role: apps/monitoring/alertmanager
+      when: monitoring_stack.alertmanager.enabled
+      tags: ["alertmanager"]

@@ -1,0 +1,9 @@
+---
+- name: Configure VLAN interfaces
+  template:
+    src: vlan_interfaces.j2
+    dest: /etc/network/interfaces.d/vlans
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart networking

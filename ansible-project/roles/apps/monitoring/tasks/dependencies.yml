@@ -1,0 +1,15 @@
+---
+- name: Verify service dependencies
+  community.docker.docker_container_info:
+    name: "{{ item.container }}"
+  register: dependency_check
+  loop:
+    - { container: "prometheus", depends_on: ["node_exporter"] }
+    - { container: "alertmanager", depends_on: ["prometheus"] }
+    - { container: "grafana", depends_on: ["prometheus"] }
+
+- name: Report missing dependencies
+  fail:
+    msg: "Service {{ item.item.container }} requires {{ item.item.depends_on | join(', ') }}"
+  when: not item.exists
+  loop: "{{ dependency_check.results }}"

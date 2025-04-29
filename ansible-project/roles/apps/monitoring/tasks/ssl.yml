@@ -1,0 +1,16 @@
+---
+- name: Generate monitoring SSL certificates
+  community.crypto.x509_certificate:
+    path: "{{ monitoring_config_dir }}/certs/{{ item }}.crt"
+    privatekey_path: "{{ monitoring_config_dir }}/certs/{{ item }}.key"
+    provider: selfsigned
+    selfsigned_not_after: "+{{ monitoring_ssl_days }}d"
+    country_name: "{{ monitoring_ssl_country }}"
+    state_or_province_name: "{{ monitoring_ssl_state }}"
+    locality_name: "{{ monitoring_ssl_locality }}"
+    organization_name: "{{ monitoring_ssl_organization }}"
+    common_name: "{{ item }}.monitoring.local"
+  loop:
+    - prometheus
+    - node_exporter
+    - grafana

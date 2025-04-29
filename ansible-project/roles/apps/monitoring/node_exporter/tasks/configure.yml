@@ -1,0 +1,13 @@
+---
+- name: Create Node Exporter configuration directory
+  ansible.builtin.file:
+    path: "{{ monitoring_config_dir }}/node_exporter"
+    state: directory
+    mode: "0755"
+
+- name: Configure Node Exporter metrics authentication
+  template:
+    src: web.yml.j2
+    dest: "{{ monitoring_config_dir }}/node_exporter/web.yml"
+    mode: "0644"
+  notify: restart node_exporter
