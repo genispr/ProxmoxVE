@@ -1,26 +1,37 @@
 ---
-- name: Check monitoring services health
-  uri:
-    url: "https://{{ item.host }}:{{ item.port }}{{ item.path }}"
-    validate_certs: false
-    status_code: 200
-  register: result
-  until: result.status == 200
-  retries: 30
-  delay: 10
-  loop:
-    - {
-        host: "prometheus",
-        port: "{{ monitoring.prometheus_port }}",
-        path: "/-/healthy",
-      }
-    - {
-        host: "node_exporter",
-        port: "{{ monitoring.node_exporter_port }}",
-        path: "/metrics",
-      }
-    - {
-        host: "grafana",
-        port: "{{ monitoring.grafana_port }}",
-        path: "/api/health",
-      }
+- name: Composite Health Check for Monitoring Services
+  block:
+    - name: Check network connectivity for services
+      wait_for:
+        host: "{{ item.host }}"
+        port: "{{ monitoring_ports[item.service] }}"
+        timeout: "{{ monitoring_health_check_timeout }}"
+      loop:
+        - { host: "prometheus", service: "prometheus" }
+        - { host: "alertmanager", service: "alertmanager" }
+        - { host: "grafana", service: "grafana" }
+        - { host: "node_exporter", service: "node_exporter" }
+      failed_when: false # Record connectivity failures without failing the block
+      register: network_results
+
+    - name: Check HTTP(S) health endpoints for services
+      uri:
+        url: "{{ 'https' if monitoring_ssl_enabled else 'http' }}://{{ item.key }}:{{ monitoring_ports[item.key] }}{{ monitoring_health_paths[item.key] }}"
+        validate_certs: "{{ monitoring_ssl_enabled }}"
+        status_code: 200
+      register: http_results
+      loop:
+        - { key: "prometheus" }
+        - { key: "alertmanager" }
+        - { key: "grafana" }
+        - { key: "node_exporter" }
+      failed_when: http_results is failed # Fail if any expected health check does not return 200
+  rescue:
+    - name: Report composite health check failure
+      debug:
+        msg: "Composite health check failed: {{ network_results }} and/or {{ http_results }}"
+  # Report composite results
+- name: Report composite HTTP service results
+  debug:
+    msg: "Service {{ item.item.key }} health check returned status {{ item.status }}"
+  loop: "{{ http_results.results }}"
