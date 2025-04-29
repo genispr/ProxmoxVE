@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# LXC Maintenance Tasks
+# =============================================================================
+# This file manages maintenance operations for LXC containers
+
+- name: Configure container monitoring
+  when: proxmox_lxc.monitoring.enabled | bool
+  block:
+    - name: Install monitoring script
+      ansible.builtin.template:
+        src: monitor-containers.sh.j2
+        dest: /usr/local/bin/monitor-containers
+        mode: "0755"
+
+    - name: Create systemd service for container monitoring
+      ansible.builtin.template:
+        src: monitor-containers.service.j2
+        dest: /etc/systemd/system/monitor-containers.service
+        mode: "0644"
+      notify: reload systemd
+
+    - name: Enable and start monitoring service
+      ansible.builtin.systemd:
+        name: monitor-containers
+        state: started
+        enabled: true
+
+- name: Configure container cleanup
+  when: proxmox_lxc.cleanup.enabled | bool
+  block:
+    - name: Install cleanup script
+      ansible.builtin.template:
+        src: cleanup-containers.sh.j2
+        dest: /usr/local/bin/cleanup-containers
+        mode: "0755"
+
+    - name: Configure cleanup schedule
+      ansible.builtin.cron:
+        name: "Container cleanup"
+        job: "/usr/local/bin/cleanup-containers"
+        minute: "{{ proxmox_lxc.cleanup.schedule.minute | default('0') }}"
+        hour: "{{ proxmox_lxc.cleanup.schedule.hour | default('0') }}"
+        day: "{{ proxmox_lxc.cleanup.schedule.day | default('*') }}"
+        month: "{{ proxmox_lxc.cleanup.schedule.month | default('*') }}"
+        weekday: "{{ proxmox_lxc.cleanup.schedule.weekday | default('*') }}"
+
+- name: Configure container updates
+  when: proxmox_lxc.updates.enabled | bool
+  block:
+    - name: Install update script
+      ansible.builtin.template:
+        src: update-containers.sh.j2
+        dest: /usr/local/bin/update-containers
+        mode: "0755"
+
+    - name: Configure update schedule
+      ansible.builtin.cron:
+        name: "Container updates"
+        job: "/usr/local/bin/update-containers"
+        minute: "{{ proxmox_lxc.updates.schedule.minute | default('0') }}"
+        hour: "{{ proxmox_lxc.updates.schedule.hour | default('0') }}"
+        day: "{{ proxmox_lxc.updates.schedule.day | default('*') }}"
+        month: "{{ proxmox_lxc.updates.schedule.month | default('*') }}"
+        weekday: "{{ proxmox_lxc.updates.schedule.weekday | default('*') }}"
+  tags: ["lxc", "maintenance"]

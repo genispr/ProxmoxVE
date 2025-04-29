@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# CPU Microcode Update Tasks
+# =============================================================================
+
+- name: Check if running on bare metal
+  ansible.builtin.command: systemd-detect-virt
+  register: virt_check
+  changed_when: false
+  check_mode: false
+
+- name: Get CPU vendor information
+  ansible.builtin.command: lscpu
+  register: cpu_info
+  changed_when: false
+  check_mode: false
+
+- name: Set CPU vendor fact
+  ansible.builtin.set_fact:
+    cpu_vendor: "{{ 'intel' if 'GenuineIntel' in cpu_info.stdout else ('amd' if 'AuthenticAMD' in cpu_info.stdout else 'unknown') }}"
+
+- name: Install Intel microcode tools and packages
+  when:
+    - cpu_vendor == 'intel'
+    - virt_check.stdout == 'none'
+  block:
+    - name: Install Intel microcode tools
+      ansible.builtin.apt:
+        name:
+          - iucode-tool
+          - intel-microcode
+        state: latest
+        update_cache: true
+      notify: reboot_required
+
+- name: Install AMD microcode package
+  when:
+    - cpu_vendor == 'amd'
+    - virt_check.stdout == 'none'
+  ansible.builtin.apt:
+    name: amd64-microcode
+    state: latest
+    update_cache: true
+  notify: reboot_required

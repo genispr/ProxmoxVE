@@ -1,0 +1,16 @@
+---
+# =============================================================================
+# System Configuration Tasks
+# =============================================================================
+# This file manages basic system configuration and setup
+
+# Import setup tasks
+- name: Import setup tasks
+  ansible.builtin.import_tasks: setup.yml
+  tags: ["system", "setup"]
+
+# Import service management tasks
+- name: Import service management tasks
+  ansible.builtin.import_tasks: services.yml
+  tags: ["system", "services"]
+  when: managed_services | length > 0 

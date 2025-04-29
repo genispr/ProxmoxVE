@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# Backup Schedule Tasks
+# =============================================================================
+
+- name: Configure backup schedule
+  ansible.builtin.cron:
+    name: "Proxmox backup"
+    job: "vzdump --all --compress {{ proxmox_backup.compress }} --mode {{ proxmox_backup.mode }} --storage {{ proxmox_backup.storage }}"
+    minute: "{{ proxmox_backup.schedule.minute | default('0') }}"
+    hour: "{{ proxmox_backup.schedule.hour | default('0') }}"
+    day: "{{ proxmox_backup.schedule.day | default('*') }}"
+    month: "{{ proxmox_backup.schedule.month | default('*') }}"
+    weekday: "{{ proxmox_backup.schedule.weekday | default('*') }}"
+  when: proxmox_backup.schedule is defined
+  tags: ["backup", "schedule", "cron"]
+
+- name: Configure backup retention
+  ansible.builtin.cron:
+    name: "Proxmox backup cleanup"
+    job: "find {{ proxmox_backup.backup_dir }} -type f -mtime +{{ proxmox_backup.retention }} -delete"
+    special_time: daily
+  when: proxmox_backup.retention is defined
+  tags: ["backup", "schedule", "retention"]

@@ -1,0 +1,89 @@
+---
+# =============================================================================
+# VM Resource Management Tasks
+# =============================================================================
+# This file manages VM resource configurations including CPU and memory
+
+- name: Configure VM CPU resources
+  when: proxmox_vm.cpu is defined
+  block:
+    - name: Configure VM CPU settings
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        cores: "{{ item.cores | default(1) }}"
+        sockets: "{{ item.sockets | default(1) }}"
+        vcpus: "{{ item.vcpus | default(omit) }}"
+        cpu_type: "{{ item.type | default('kvm64') }}"
+        cpu_flags: "{{ item.flags | default([]) }}"
+        numa: "{{ item.numa | default(false) }}"
+        state: present
+      loop: "{{ proxmox_vm.cpu }}"
+  tags: ["vm", "resources", "cpu"]
+
+- name: Configure VM memory resources
+  when: proxmox_vm.memory is defined
+  block:
+    - name: Configure VM memory settings
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        memory: "{{ item.size }}"
+        balloon: "{{ item.balloon | default(0) }}"
+        shares: "{{ item.shares | default(omit) }}"
+        hugepages: "{{ item.hugepages | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.memory }}"
+
+    - name: Configure VM swap settings
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        swap: "{{ item.swap | default(0) }}"
+        state: present
+      loop: "{{ proxmox_vm.memory }}"
+      when: item.swap is defined
+  tags: ["vm", "resources", "memory"]
+
+- name: Configure VM resource limits
+  when: proxmox_vm.limits is defined
+  block:
+    - name: Configure VM CPU limits
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        cpulimit: "{{ item.cpu | default(omit) }}"
+        cpuunits: "{{ item.cpuunits | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.limits }}"
+      when: item.cpu is defined or item.cpuunits is defined
+
+    - name: Configure VM I/O limits
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        io_thread: "{{ item.io_thread | default(false) }}"
+        io_uring: "{{ item.io_uring | default(false) }}"
+        state: present
+      loop: "{{ proxmox_vm.limits }}"
+      when: item.io_thread is defined or item.io_uring is defined
+  tags: ["vm", "resources", "limits"]
+
+- name: Configure VM resource monitoring
+  when: proxmox_vm.monitoring is defined
+  block:
+    - name: Configure VM resource monitoring settings
+      community.general.proxmox_vm:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        agent: "{{ item.agent | default(true) }}"
+        freeze: "{{ item.freeze | default(false) }}"
+        state: present
+      loop: "{{ proxmox_vm.monitoring }}"
+  tags: ["vm", "resources", "monitoring"]

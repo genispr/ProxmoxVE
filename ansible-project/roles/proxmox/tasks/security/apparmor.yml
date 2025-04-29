@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# AppArmor Configuration Tasks
+# =============================================================================
+
+- name: Ensure AppArmor and utilities are installed
+  ansible.builtin.apt:
+    name:
+      - apparmor
+      - apparmor-utils
+      - apparmor-profiles
+    state: present
+  when: security_config.apparmor.enabled | default(false)
+  tags: ["security", "apparmor"]
+
+- name: Ensure AppArmor profile directory exists
+  ansible.builtin.file:
+    path: /etc/apparmor.d
+    state: directory
+    mode: "0755"
+  tags: ["security", "apparmor"]
+
+- name: Configure AppArmor profiles
+  ansible.builtin.template:
+    src: "security/apparmor/{{ item }}.j2"
+    dest: "/etc/apparmor.d/{{ item }}"
+    mode: "0644"
+  loop: "{{ security_config.apparmor.profiles | default([]) }}"
+  when: security_config.apparmor.profiles is defined
+  notify: reload apparmor
+  tags: ["security", "apparmor"]
+
+- name: Deploy Proxmox AppArmor profile
+  ansible.builtin.template:
+    src: security/apparmor-profile.j2
+    dest: /etc/apparmor.d/usr.sbin.proxmox
+    mode: "0644"
+  notify: reload apparmor
+  tags: ["security", "apparmor"]
+
+- name: Ensure AppArmor service is enabled and started
+  ansible.builtin.service:
+    name: apparmor
+    state: started
+    enabled: yes
+  tags: ["security", "apparmor"]
+
+- name: Check if AppArmor profile is loaded
+  ansible.builtin.command: aa-status
+  register: aa_status
+  changed_when: false
+  check_mode: no
+  tags: ["security", "apparmor"]
+
+- name: Enforce Proxmox AppArmor profile
+  ansible.builtin.command: aa-enforce usr.sbin.proxmox
+  when: "'usr.sbin.proxmox' not in aa_status.stdout"
+  tags: ["security", "apparmor"]

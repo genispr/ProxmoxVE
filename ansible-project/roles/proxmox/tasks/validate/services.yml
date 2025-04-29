@@ -1,0 +1,105 @@
+---
+# =============================================================================
+# Service Configuration Validation Tasks
+# =============================================================================
+
+- name: Validate service configuration
+  ansible.builtin.assert:
+    that:
+      - item.name is string
+      - item.state in ['started', 'stopped', 'restarted']
+      - item.enabled | type_debug == 'bool'
+      - not item.package is defined or item.package is string
+      - not item.config_template is defined or item.config_template is string
+      - not item.config_path is defined or item.config_path is string
+      - not item.user is defined or item.user is string
+      - not item.group is defined or item.group is string
+      - not item.dependencies is defined or item.dependencies is sequence
+      - not item.environment is defined or item.environment is mapping
+    fail_msg: |
+      Invalid service configuration for {{ item.name }}:
+      - Name must be a string
+      - State must be 'started', 'stopped', or 'restarted'
+      - Enabled must be boolean
+      - Package must be a string if defined
+      - Config template must be a string if defined
+      - Config path must be a string if defined
+      - User must be a string if defined
+      - Group must be a string if defined
+      - Dependencies must be a list if defined
+      - Environment must be a dictionary if defined
+    success_msg: "Service configuration for {{ item.name }} is valid"
+  loop: "{{ managed_services }}"
+  register: service_validation
+  ignore_errors: true
+  tags: ["validate", "services"]
+
+- name: Validate email configuration
+  ansible.builtin.assert:
+    that:
+      - proxmox_email.enabled | type_debug == 'bool'
+      - not proxmox_email.enabled or proxmox_email.server | length > 0
+      - proxmox_email.port | int > 0 and proxmox_email.port | int <= 65535
+      - proxmox_email.security in ['none', 'ssl', 'tls']
+      - not proxmox_email.enabled or proxmox_email.from_address | length > 0
+      - not proxmox_email.enabled or proxmox_email.to_address | length > 0
+    fail_msg: |
+      Invalid email configuration:
+      - Enabled must be boolean
+      - Server must be specified when enabled
+      - Port must be between 1 and 65535
+      - Security must be 'none', 'ssl', or 'tls'
+      - From address must be specified when enabled
+      - To address must be specified when enabled
+    success_msg: "Email configuration is valid"
+  when: proxmox_email is defined
+  register: email_validation
+  ignore_errors: true
+  tags: ["validate", "services", "email"]
+
+- name: Validate monitoring configuration
+  ansible.builtin.assert:
+    that:
+      - proxmox_monitoring.smart_enabled | type_debug == 'bool'
+      - proxmox_monitoring.smart_schedule in ['hourly', 'daily', 'weekly', 'monthly']
+      - proxmox_monitoring.zfs_scrub_schedule in ['daily', 'weekly', 'monthly']
+      - proxmox_monitoring.zfs_snapshot_schedule in ['hourly', 'daily', 'weekly']
+      - proxmox_monitoring.health_check_enabled | type_debug == 'bool'
+      - proxmox_monitoring.health_check_interval is match('^[0-9]+[hd]$')
+      - proxmox_monitoring.metrics_retention is match('^[0-9]+[DMY]$')
+    fail_msg: |
+      Invalid monitoring configuration:
+      - SMART enabled must be boolean
+      - SMART schedule must be 'hourly', 'daily', 'weekly', or 'monthly'
+      - ZFS scrub schedule must be 'daily', 'weekly', or 'monthly'
+      - ZFS snapshot schedule must be 'hourly', 'daily', or 'weekly'
+      - Health check enabled must be boolean
+      - Health check interval must be in format '1h', '2d', etc.
+      - Metrics retention must be in format '1D', '2M', '1Y', etc.
+    success_msg: "Monitoring configuration is valid"
+  when: proxmox_monitoring is defined
+  register: monitoring_validation
+  ignore_errors: true
+  tags: ["validate", "services", "monitoring"]
+
+- name: Check for service validation failures
+  ansible.builtin.fail:
+    msg: |
+      Configuration validation failed:
+      {% if service_validation.failed %}
+      Service Validation Errors:
+      {{ service_validation.msg }}
+      {% endif %}
+      {% if email_validation.failed %}
+      Email Validation Errors:
+      {{ email_validation.msg }}
+      {% endif %}
+      {% if monitoring_validation.failed %}
+      Monitoring Validation Errors:
+      {{ monitoring_validation.msg }}
+      {% endif %}
+  when: >
+    service_validation.failed or
+    (email_validation is defined and email_validation.failed) or
+    (monitoring_validation is defined and monitoring_validation.failed)
+  tags: ["validate", "services"]

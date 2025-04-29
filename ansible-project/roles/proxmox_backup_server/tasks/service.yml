@@ -1,0 +1,11 @@
+---
+# =============================================================================
+# PBS Service Management Tasks
+# =============================================================================
+
+- name: Ensure PBS service is enabled
+  systemd:
+    name: proxmox-backup
+    enabled: yes
+    state: started
+  notify: reload pbs

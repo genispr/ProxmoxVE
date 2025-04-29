@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Proxmox VE Enterprise Repository
+# Last modified: {{ ansible_date_time.iso8601 }}
+#
+# Note: This repository is only available to users with an active subscription.
+# Warning: Using this repository without a valid subscription key will fail.
+# For more information, visit: https://www.proxmox.com/en/proxmox-ve/pricing
+
+{% if proxmox_repositories.pve.enterprise %}
+deb https://enterprise.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-enterprise
+{% else %}
+# Repository disabled: Enterprise repository requires a valid subscription.
+# To enable, set proxmox_repositories.pve.enterprise to true and configure your subscription key.
+# deb https://enterprise.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-enterprise
+{% endif %} 

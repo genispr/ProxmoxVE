@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# Security Auditing Tasks
+# =============================================================================
+
+- name: Install audit packages
+  ansible.builtin.apt:
+    name:
+      - auditd
+      - aide
+    state: present
+  when: security_config.audit.enabled | default(false)
+  tags: ["security", "audit"]
+
+- name: Configure audit rules
+  ansible.builtin.template:
+    src: security/audit.rules.j2
+    dest: /etc/audit/rules.d/audit.rules
+    mode: "0600"
+  notify: restart auditd
+  when: security_config.audit.rules is defined
+  tags: ["security", "audit"]
+
+- name: Initialize AIDE database
+  ansible.builtin.command:
+    cmd: aideinit
+    creates: /var/lib/aide/aide.db
+  when: security_config.aide.enabled | default(false)
+  tags: ["security", "audit"]
+
+- name: Configure AIDE
+  ansible.builtin.template:
+    src: security/aide.conf.j2
+    dest: /etc/aide/aide.conf
+    mode: "0644"
+  when: security_config.aide.config is defined
+  notify: restart aide
+  tags: ["security", "audit"]
+
+- name: Setup audit log rotation
+  ansible.builtin.template:
+    src: security/audit-logrotate.j2
+    dest: /etc/logrotate.d/audit
+    mode: "0644"
+  when: security_config.audit.enabled | default(false)
+  tags: ["security", "audit"]

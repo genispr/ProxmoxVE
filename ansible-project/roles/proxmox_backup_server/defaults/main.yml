@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Proxmox Backup Server Role Default Variables
+# =============================================================================
+
+# Note: Most configuration is now handled by the main Proxmox role.
+# See proxmox role's defaults/main.yml for:
+# - Repository configuration (proxmox_repositories.pbs)
+# - Service management (managed_services)
+# - Backup configuration (proxmox_backup.pbs)
+# - System limits (proxmox_security.kernel.keys)
+
+# Local role variables are kept to a minimum to avoid duplication
+# and potential configuration conflicts.
+
+# PBS-Specific Configuration
+# -----------------------------------------------------------------------------
+pbs_dependencies:
+  - gpg
+  - proxmox-backup-server
+
+# Whether to remove the subscription nag message
+remove_subscription_nag: true
+
+# System resource limits
+kernel_maxkeys: 2000
+kernel_maxbytes: 2000000
+
+# Repository configuration
+pbs_version: bookworm
+enable_enterprise_repo: false
+enable_test_repo: false 
+
+# Role Configuration
+# -----------------------------------------------------------------------------
+proxmox_backup:
+  pbs_enabled: false  # Must be explicitly enabled
+  pbs:
+    # Package Management
+    dependencies:
+      - gpg
+      - proxmox-backup-server
+    
+    # Repository Configuration
+    enterprise_repo: false
+    version: "{{ ansible_distribution_release }}"
+    
+    # Interface Configuration
+    remove_subscription_nag: true
+    motd_enabled: true
+    web_interface_port: 8007 

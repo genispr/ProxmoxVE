@@ -1,0 +1,235 @@
+---
+# =============================================================================
+# Power Management Tasks
+# =============================================================================
+# This file manages power and resource management settings
+
+# CPU Power Management
+# -----------------------------------------------------------------------------
+- name: Configure CPU power management
+  block:
+    - name: Set CPU governor
+      ansible.builtin.lineinfile:
+        path: "/sys/devices/system/cpu/cpu{{ item }}/cpufreq/scaling_governor"
+        line: "{{ proxmox_power.cpu_governor }}"
+        create: true
+      loop: "{{ range(0, ansible_processor_vcpus) | list }}"
+      when: proxmox_power.cpu_governor is defined
+
+    - name: Configure CPU mitigations
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"\s*$'
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="$1 mitigations={{ "off" if not proxmox_cpu.mitigations else "auto" }}"'
+        backrefs: true
+      notify: update grub
+      when: proxmox_cpu is defined
+  tags: ["power", "cpu"]
+
+# Bus Power Management
+# -----------------------------------------------------------------------------
+- name: Configure PCIe power management
+  block:
+    - name: Set PCIe ASPM policy
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/pcie-aspm.conf
+        content: "options pcie_aspm policy={{ proxmox_power.pcie_aspm_policy }}"
+        mode: "0644"
+      notify: reload modules
+      when: proxmox_power.pcie_aspm_policy is defined
+  tags: ["power", "pcie"]
+
+- name: Configure USB power management
+  when: proxmox_power.usb_autosuspend | bool
+  block:
+    - name: Enable USB autosuspend
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"\s*$'
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="$1 usbcore.autosuspend=1"'
+        backrefs: true
+      notify: update grub
+  tags: ["power", "usb"]
+
+# Storage Power Management
+# -----------------------------------------------------------------------------
+- name: Configure disk power management
+  when: proxmox_power.disks is defined
+  block:
+    - name: Set disk power management settings
+      community.general.hdparm:
+        name: "/dev/{{ item.name }}"
+        spindown: "{{ item.spindown | default(omit) }}"
+        standby: "{{ item.standby | default(omit) }}"
+        apm: "{{ item.apm | default(omit) }}"
+      loop: "{{ proxmox_power.disks }}"
+
+    - name: Configure disk scheduler
+      ansible.builtin.lineinfile:
+        path: "/sys/block/{{ item.name }}/queue/scheduler"
+        line: "{{ item.scheduler }}"
+      loop: "{{ proxmox_power.disks }}"
+      when: item.scheduler is defined
+  tags: ["power", "disk"]
+
+# Network Power Management
+# -----------------------------------------------------------------------------
+- name: Configure network interface power management
+  when: proxmox_power.network_interfaces is defined
+  block:
+    - name: Set network interface power settings
+      ansible.builtin.lineinfile:
+        path: "/sys/class/net/{{ item.name }}/power/control"
+        line: "{{ item.power_control }}"
+      loop: "{{ proxmox_power.network_interfaces }}"
+  tags: ["power", "network"]
+
+# Thermal Management
+# -----------------------------------------------------------------------------
+- name: Configure thermal management
+  when: proxmox_power.thermal_mode is defined
+  block:
+    - name: Set thermal management mode
+      ansible.builtin.copy:
+        dest: /etc/thermald/thermal-conf.xml
+        src: thermal-conf.xml.j2
+        mode: "0644"
+      notify: restart thermald
+  tags: ["power", "thermal"]
+
+- name: Configure fan control
+  when: proxmox_power.fan_mode is defined
+  block:
+    - name: Install fan control dependencies
+      ansible.builtin.apt:
+        name: fancontrol
+        state: present
+
+    - name: Configure fan control settings
+      ansible.builtin.template:
+        src: fancontrol.conf.j2
+        dest: /etc/fancontrol
+        mode: "0644"
+      notify: restart fancontrol
+  tags: ["power", "fan"]
+
+# General Power Management
+# -----------------------------------------------------------------------------
+- name: Configure power management
+  when: proxmox_power is defined
+  block:
+    - name: Install power management packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - acpid
+        - powermgmt-base
+        - pm-utils
+        - cpufrequtils
+      when: proxmox_power.packages.enabled | bool
+
+    - name: Configure ACPI events
+      when: proxmox_power.acpi is defined
+      block:
+        - name: Create ACPI event handlers
+          ansible.builtin.template:
+            src: "acpi/{{ item }}.sh.j2"
+            dest: "/etc/acpi/{{ item }}.sh"
+            mode: "0755"
+          loop: "{{ proxmox_power.acpi.events | default([]) }}"
+          notify: restart acpid
+
+        - name: Configure ACPI event rules
+          ansible.builtin.template:
+            src: acpi/events.j2
+            dest: /etc/acpi/events/powerbtn
+            mode: "0644"
+          notify: restart acpid
+
+    - name: Configure UPS monitoring
+      when: proxmox_power.ups is defined and proxmox_power.ups.enabled | bool
+      block:
+        - name: Install NUT packages
+          ansible.builtin.apt:
+            name: "{{ item }}"
+            state: present
+          loop:
+            - nut
+            - nut-client
+            - nut-server
+
+        - name: Configure NUT UPS settings
+          ansible.builtin.template:
+            src: "ups/{{ item }}.j2"
+            dest: "/etc/nut/{{ item }}"
+            mode: "0640"
+          loop:
+            - ups.conf
+            - upsmon.conf
+            - upsd.conf
+            - upsd.users
+          notify:
+            - restart nut-server
+            - restart nut-client
+
+        - name: Enable NUT services
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: started
+            enabled: true
+          loop:
+            - nut-server
+            - nut-client
+
+    - name: Configure power saving options
+      when: proxmox_power.saving is defined
+      block:
+        - name: Configure disk power management
+          ansible.builtin.template:
+            src: power/hdparm.conf.j2
+            dest: /etc/hdparm.conf
+            mode: "0644"
+          when: proxmox_power.saving.disk is defined
+          notify: reload hdparm
+
+        - name: Configure USB autosuspend
+          ansible.builtin.lineinfile:
+            path: /etc/default/tlp
+            regexp: "^USB_AUTOSUSPEND="
+            line: "USB_AUTOSUSPEND={{ proxmox_power.saving.usb_suspend | int }}"
+            create: true
+          when: proxmox_power.saving.usb_suspend is defined
+
+        - name: Configure PCI power management
+          ansible.builtin.template:
+            src: power/pci-pm.rules.j2
+            dest: /etc/udev/rules.d/pci-pm.rules
+            mode: "0644"
+          when: proxmox_power.saving.pci_pm is defined
+          notify: reload udev
+
+    - name: Configure power monitoring
+      when: proxmox_power.monitoring is defined and proxmox_power.monitoring.enabled | bool
+      block:
+        - name: Install power monitoring tools
+          ansible.builtin.apt:
+            name: "{{ item }}"
+            state: present
+          loop:
+            - powertop
+            - powerstat
+
+        - name: Configure power monitoring service
+          ansible.builtin.template:
+            src: power/monitoring.service.j2
+            dest: /etc/systemd/system/power-monitoring.service
+            mode: "0644"
+          notify: reload systemd
+
+        - name: Enable power monitoring service
+          ansible.builtin.systemd:
+            name: power-monitoring
+            state: started
+            enabled: true
+  tags: ["power", "system"]

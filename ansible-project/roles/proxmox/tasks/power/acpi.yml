@@ -1,0 +1,41 @@
+---
+# =============================================================================
+# ACPI Power Management Tasks
+# =============================================================================
+
+- name: Install ACPI packages
+  ansible.builtin.apt:
+    name:
+      - acpid
+      - acpi-support
+    state: present
+  when: power_config.acpi.enabled | default(true)
+  tags: ["power", "acpi"]
+
+- name: Configure ACPI events
+  ansible.builtin.template:
+    src: power/acpi-events.j2
+    dest: /etc/acpi/events/{{ item.name }}
+    mode: "0644"
+  loop: "{{ power_config.acpi.events | default([]) }}"
+  when: power_config.acpi.events is defined
+  notify: restart acpid
+  tags: ["power", "acpi"]
+
+- name: Deploy ACPI scripts
+  ansible.builtin.template:
+    src: power/acpi-scripts/{{ item }}.j2
+    dest: /etc/acpi/{{ item }}
+    mode: "0755"
+  loop: "{{ power_config.acpi.scripts | default([]) }}"
+  when: power_config.acpi.scripts is defined
+  notify: restart acpid
+  tags: ["power", "acpi"]
+
+- name: Ensure ACPI daemon is enabled and started
+  ansible.builtin.service:
+    name: acpid
+    state: started
+    enabled: yes
+  when: power_config.acpi.enabled | default(true)
+  tags: ["power", "acpi"]

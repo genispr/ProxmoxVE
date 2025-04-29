@@ -1,0 +1,43 @@
+---
+# =============================================================================
+# Test Repository Configuration Tasks
+# =============================================================================
+
+- name: Configure test repository
+  block:
+    - name: Add test repository key
+      ansible.builtin.apt_key:
+        url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+        state: present
+      when: repository_config.test.enabled | default(false)
+
+    - name: Add PVE test repository
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-test"
+        state: "{{ 'present' if repository_config.test.enabled | default(false) else 'absent' }}"
+        filename: proxmox-test
+        mode: "0644"
+      notify: update_cache
+      when: repository_config.test.pve | default(false)
+
+    - name: Add PBS test repository
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pbs {{ ansible_distribution_release }} pbs-test"
+        state: "{{ 'present' if repository_config.test.enabled | default(false) else 'absent' }}"
+        filename: proxmox-backup-test
+        mode: "0644"
+      notify: update_cache
+      when: repository_config.test.pbs | default(false)
+  when: repository_config.test is defined
+  tags: ["repository", "test"]
+
+- name: Configure test repository preferences
+  ansible.builtin.template:
+    src: repository/test-preferences.j2
+    dest: /etc/apt/preferences.d/proxmox-test
+    mode: "0644"
+  when:
+    - repository_config.test is defined
+    - repository_config.test.enabled | default(false)
+    - repository_config.test.preferences is defined
+  tags: ["repository", "test"]

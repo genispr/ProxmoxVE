@@ -1,0 +1,60 @@
+---
+# =============================================================================
+# Storage Configuration Main Tasks
+# =============================================================================
+
+- name: Include storage backend configuration tasks
+  ansible.builtin.include_tasks: storage/backends.yml
+  tags: ["storage", "backends"]
+
+- name: Include ZFS configuration tasks
+  ansible.builtin.include_tasks: storage/zfs.yml
+  when: storage_config.zfs.enabled | default(false)
+  tags: ["storage", "zfs"]
+
+# LVM Configuration
+- name: Configure LVM storage
+  block:
+    - name: Install LVM tools
+      ansible.builtin.apt:
+        name:
+          - lvm2
+          - thin-provisioning-tools
+        state: present
+      when: storage_config.lvm.enabled | default(false)
+
+    - name: Create volume groups
+      ansible.builtin.lvg:
+        vg: "{{ item.name }}"
+        pvs: "{{ item.devices | join(',') }}"
+      loop: "{{ storage_config.lvm.groups | default([]) }}"
+      when: storage_config.lvm.groups is defined
+
+    - name: Configure LVM storage in Proxmox
+      ansible.builtin.command:
+        cmd: "pvesm add lvm {{ item.name }} --vgname {{ item.vg }} --content {{ item.content | join(',') }}"
+      loop: "{{ storage_config.lvm.proxmox | default([]) }}"
+      when: storage_config.lvm.proxmox is defined
+      notify: reload storage
+  tags: ["storage", "lvm"]
+
+# Storage Monitoring
+- name: Configure storage monitoring
+  block:
+    - name: Install monitoring tools
+      ansible.builtin.apt:
+        name:
+          - smartmontools
+          - hdparm
+          - iotop
+        state: present
+      when: storage_config.monitoring.tools | default(false)
+
+    - name: Configure SMART monitoring
+      ansible.builtin.template:
+        src: storage/smartd.conf.j2
+        dest: /etc/smartd.conf
+        mode: "0644"
+      notify: restart smartd
+      when: storage_config.monitoring.smart | default(false)
+  tags: ["storage", "monitoring"]

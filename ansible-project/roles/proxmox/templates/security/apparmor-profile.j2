@@ -1,0 +1,76 @@
+# AppArmor profile for Proxmox services
+# {{ ansible_managed }}
+
+#include <tunables/global>
+
+profile proxmox-services flags=(attach_disconnected) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+  #include <abstractions/ssl_certs>
+
+  # Basic system access
+  capability net_admin,
+  capability net_raw,
+  capability sys_admin,
+  capability sys_resource,
+  capability dac_override,
+  capability setuid,
+  capability setgid,
+
+  # Network access
+  network inet stream,
+  network inet6 stream,
+  network netlink raw,
+
+  # Proxmox directories and files
+  /etc/pve/** r,
+  /var/lib/pve/** rwk,
+  /var/log/pve/** rw,
+  
+  # Storage directories
+  /var/lib/vz/** rwk,
+  /storage/** rwk,
+  
+  # System files and directories
+  /proc/** r,
+  /sys/** r,
+  /dev/** rw,
+  /run/** rwk,
+  
+  # Configuration files
+  /etc/proxmox-backup/** r,
+  /etc/default/proxmox-* r,
+  
+  # Executables
+  /usr/sbin/pveproxy rmix,
+  /usr/sbin/pvesm rmix,
+  /usr/bin/proxmox-backup-* rmix,
+  
+  # SSL/TLS certificates
+  /etc/ssl/** r,
+  
+  # Kernel modules and configuration
+  /etc/modules-load.d/* r,
+  /etc/sysctl.d/* r,
+  
+  # Deny access to sensitive files
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny /etc/passwd w,
+  deny /etc/group w,
+  
+  # Variables from Ansible
+{% if proxmox_additional_paths is defined %}
+{% for path in proxmox_additional_paths %}
+  {{ path }} rwk,
+{% endfor %}
+{% endif %}
+
+{% if proxmox_deny_paths is defined %}
+{% for path in proxmox_deny_paths %}
+  deny {{ path }} rwx,
+{% endfor %}
+{% endif %}
+} 
+ 

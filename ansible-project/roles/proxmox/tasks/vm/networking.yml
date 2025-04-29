@@ -1,0 +1,84 @@
+---
+# =============================================================================
+# VM Networking Tasks
+# =============================================================================
+# This file manages VM network configuration
+
+- name: Configure VM network defaults
+  block:
+    - name: Set default network model
+      community.general.proxmox_defaults:
+        api_host: localhost
+        api_user: root@pam
+        type: qemu
+        defaults:
+          net0: "model={{ proxmox_vm_defaults.network_model }}"
+  tags: ["vm", "network", "defaults"]
+
+- name: Configure VM network bridges
+  when: proxmox_vm.network.bridges is defined
+  block:
+    - name: Create network bridges
+      community.general.proxmox_bridge:
+        api_host: localhost
+        api_user: root@pam
+        name: "{{ item.name }}"
+        bridge_ports: "{{ item.ports | default([]) }}"
+        vlan_aware: "{{ item.vlan_aware | default(false) }}"
+        state: present
+      loop: "{{ proxmox_vm.network.bridges }}"
+  tags: ["vm", "network", "bridges"]
+
+- name: Configure VM network interfaces
+  when: proxmox_vm.network.interfaces is defined
+  block:
+    - name: Configure VM network interfaces
+      community.general.proxmox_vm_interface:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        interface: "{{ item.interface }}"
+        model: "{{ item.model | default(proxmox_vm_defaults.network_model) }}"
+        bridge: "{{ item.bridge }}"
+        tag: "{{ item.vlan | default(omit) }}"
+        firewall: "{{ item.firewall | default(true) }}"
+        rate: "{{ item.rate | default(omit) }}"
+        mtu: "{{ item.mtu | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.network.interfaces }}"
+  tags: ["vm", "network", "interfaces"]
+
+- name: Configure VM network firewall
+  when: proxmox_vm.network.firewall.enabled | bool
+  block:
+    - name: Configure VM firewall rules
+      community.general.proxmox_firewall_rule:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.0.vmid }}"
+        pos: "{{ item.1.pos | default(omit) }}"
+        action: "{{ item.1.action }}"
+        type: "{{ item.1.type }}"
+        source: "{{ item.1.source | default(omit) }}"
+        dest: "{{ item.1.dest | default(omit) }}"
+        proto: "{{ item.1.proto | default(omit) }}"
+        dport: "{{ item.1.dport | default(omit) }}"
+        sport: "{{ item.1.sport | default(omit) }}"
+        comment: "{{ item.1.comment | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.network.firewall.rules | subelements('rules') }}"
+  tags: ["vm", "network", "firewall"]
+
+- name: Configure VM network DHCP
+  when: proxmox_vm.network.dhcp.enabled | bool
+  block:
+    - name: Configure DHCP reservations
+      community.general.proxmox_dhcp_reservation:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        mac: "{{ item.mac }}"
+        ip: "{{ item.ip }}"
+        state: present
+      loop: "{{ proxmox_vm.network.dhcp.reservations }}"
+  tags: ["vm", "network", "dhcp"]

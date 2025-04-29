@@ -1,0 +1,55 @@
+---
+# =============================================================================
+# Cluster Configuration Default Variables
+# =============================================================================
+
+# Basic Cluster Configuration
+# -----------------------------------------------------------------------------
+proxmox_cluster:
+  enabled: false
+  name: "proxmox-cluster"
+
+  # Node Configuration
+  nodes: [] # List of cluster nodes
+  quorum_votes: 1
+  link_mode: "static" # Can be 'static' or 'dynamic'
+
+  # Network Configuration
+  network:
+    allowed_networks: [] # Networks allowed for cluster communication
+    deny_networks: [] # Networks denied for cluster communication
+    link_count: 1 # Number of network links between nodes
+
+  # Corosync Configuration
+  corosync:
+    token: 2000
+    token_retransmits: 4
+    secauth: true
+    interface: "eth0"
+    redundant_ring: false # Enable second ring for redundancy
+
+  # Join/Leave Settings
+  join:
+    timeout: 180 # Seconds to wait for join operations
+    force: false # Force join even if node was part of another cluster
+
+  # HA Configuration Integration
+  ha_enabled: false # Whether to enable HA services for this cluster
+
+  # Resource Distribution
+  resource_distribution:
+    auto_failback: true
+    migration_timeout: 300 # Seconds to wait for migration
+    max_parallel_migrations: 1
+
+  # Fencing Configuration
+  fencing:
+    enabled: true
+    timeout: 60
+    delay: 5
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    interval: 60
+    fence_timeout: 180

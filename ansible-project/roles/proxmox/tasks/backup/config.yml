@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# Backup Configuration Tasks
+# =============================================================================
+
+- name: Ensure backup directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ proxmox_backup.backup_dir }}"
+    - "{{ proxmox_backup.restore_dir }}"
+  tags: ["backup", "config", "directories"]
+
+- name: Install restore dependencies
+  ansible.builtin.apt:
+    name: rsync
+    state: present
+  when: proxmox_backup.restore.enabled | bool
+  tags: ["backup", "config", "dependencies"]
+
+- name: Configure restore script
+  ansible.builtin.template:
+    src: container-restore.sh.j2
+    dest: /usr/local/sbin/container-restore
+    mode: "0755"
+  when: proxmox_backup.restore.enabled | bool
+  tags: ["backup", "config", "restore"]

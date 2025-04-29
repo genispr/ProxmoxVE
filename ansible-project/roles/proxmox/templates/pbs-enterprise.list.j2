@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Proxmox Backup Server Enterprise Repository
+# Last modified: {{ ansible_date_time.iso8601 }}
+#
+# Note: This repository is only available to users with an active subscription.
+# Warning: Using this repository without a valid subscription key will fail.
+# For more information, visit: https://www.proxmox.com/en/proxmox-backup-server/pricing
+
+{% if proxmox_repositories.pbs.enterprise %}
+deb https://enterprise.proxmox.com/debian/pbs {{ proxmox_repositories.pbs.version }} pbs-enterprise
+{% else %}
+# Repository disabled: Enterprise repository requires a valid subscription.
+# To enable, set proxmox_repositories.pbs.enterprise to true and configure your subscription key.
+# deb https://enterprise.proxmox.com/debian/pbs {{ proxmox_repositories.pbs.version }} pbs-enterprise
+{% endif %} 

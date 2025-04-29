@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# Network Configuration Main Tasks
+# =============================================================================
+
+- name: Include interface configuration tasks
+  ansible.builtin.include_tasks: network/interfaces.yml
+  tags: ["network", "interfaces"]
+
+- name: Include firewall configuration tasks
+  ansible.builtin.include_tasks: network/firewall.yml
+  tags: ["network", "firewall"]
+
+- name: Include DNS configuration tasks
+  ansible.builtin.include_tasks: network/dns.yml
+  tags: ["network", "dns"]
+
+# Network Security Parameters
+- name: Configure network security parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-network.conf
+  loop: "{{ network_config.sysctl | dict2items }}"
+  when: network_config.sysctl is defined
+  notify: reload sysctl
+  tags: ["network", "security"]
+
+# Network Monitoring
+- name: Configure network monitoring
+  block:
+    - name: Install monitoring tools
+      ansible.builtin.apt:
+        name:
+          - ethtool
+          - iftop
+          - iptraf-ng
+          - nethogs
+        state: present
+      when: network_config.monitoring.tools | default(false)
+
+    - name: Configure network logging
+      ansible.builtin.template:
+        src: network/logging.conf.j2
+        dest: /etc/rsyslog.d/30-network.conf
+        mode: "0644"
+      notify: restart rsyslog
+      when: network_config.monitoring.logging | default(false)
+  tags: ["network", "monitoring"]

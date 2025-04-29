@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# Security Tasks
+# =============================================================================
+# This file manages security configuration for Proxmox VE
+
+- name: Import system security tasks
+  ansible.builtin.import_tasks: system.yml
+  tags: ["security", "system"]
+
+- name: Import firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: ["security", "firewall"]
+  when: proxmox_firewall_enabled | bool
+
+- name: Import fail2ban tasks
+  ansible.builtin.import_tasks: fail2ban.yml
+  tags: ["security", "fail2ban"]
+  when: proxmox_fail2ban_enabled | bool
+
+- name: Import SELinux tasks
+  ansible.builtin.import_tasks: selinux.yml
+  tags: ["security", "selinux"]
+
+- name: Import kernel security tasks
+  ansible.builtin.import_tasks: kernel.yml
+  tags: ["security", "kernel"]
+
+- name: Import system limits tasks
+  ansible.builtin.import_tasks: limits.yml
+  tags: ["security", "limits"]
+
+- name: Import authentication tasks
+  ansible.builtin.import_tasks: auth.yml
+  tags: ["security", "auth"]
+
+- name: Import certificate tasks
+  ansible.builtin.import_tasks: certificates.yml
+  tags: ["security", "certificates"] 

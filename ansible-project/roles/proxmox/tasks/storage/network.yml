@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# Network Storage Configuration Tasks
+# =============================================================================
+
+- name: Configure NFS storage
+  ansible.builtin.command:
+    cmd: >-
+      pvesm add nfs {{ item.name }}
+      --server {{ item.server }}
+      --export {{ item.export }}
+      --content {{ item.content | join(',') }}
+      {% if item.options is defined %}--options {{ item.options }}{% endif %}
+  loop: "{{ storage_config.nfs | default([]) }}"
+  when: storage_config.nfs is defined
+  notify: reload storage
+  tags: ["storage", "network", "nfs"]
+
+- name: Configure CIFS storage
+  ansible.builtin.command:
+    cmd: >-
+      pvesm add cifs {{ item.name }}
+      --server {{ item.server }}
+      --share {{ item.share }}
+      --username {{ item.username }}
+      --password {{ item.password }}
+      {% if item.domain is defined %}--domain {{ item.domain }}{% endif %}
+      {% if item.content is defined %}--content {{ item.content | join(',') }}{% endif %}
+  loop: "{{ storage_config.cifs | default([]) }}"
+  when: storage_config.cifs is defined
+  notify: reload storage
+  tags: ["storage", "network", "cifs"]
+
+- name: Configure iSCSI storage
+  ansible.builtin.command:
+    cmd: >-
+      pvesm add iscsi {{ item.name }}
+      --portal {{ item.portal }}
+      --target {{ item.target }}
+      {% if item.content is defined %}--content {{ item.content | join(',') }}{% endif %}
+      {% if item.options is defined %}--options {{ item.options }}{% endif %}
+  loop: "{{ storage_config.iscsi | default([]) }}"
+  when: storage_config.iscsi is defined
+  notify: reload storage
+  tags: ["storage", "network", "iscsi"]
+
+- name: Configure Glusterfs storage
+  ansible.builtin.command:
+    cmd: >-
+      pvesm add glusterfs {{ item.name }}
+      --server {{ item.server }}
+      --volume {{ item.volume }}
+      {% if item.content is defined %}--content {{ item.content | join(',') }}{% endif %}
+      {% if item.options is defined %}--options {{ item.options }}{% endif %}
+  loop: "{{ storage_config.glusterfs | default([]) }}"
+  when: storage_config.glusterfs is defined
+  notify: reload storage
+  tags: ["storage", "network", "glusterfs"]

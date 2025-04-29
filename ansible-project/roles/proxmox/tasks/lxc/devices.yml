@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# LXC Device Management Tasks
+# =============================================================================
+# This file manages device passthrough and hardware access for LXC containers
+
+- name: Configure device passthrough
+  when: proxmox_lxc.device_passthrough.enabled | bool
+  block:
+    - name: Configure device passthrough for containers
+      when: item.enabled | bool
+      loop: "{{ proxmox_lxc.device_passthrough.containers }}"
+      block:
+        - name: Update container configuration
+          ansible.builtin.lineinfile:
+            path: "/etc/pve/lxc/{{ item.id }}.conf"
+            regexp: "{{ item.regexp }}"
+            line: "{{ item.line }}"
+            state: present
+          loop:
+            - regexp: '^lxc\.autodev:'
+              line: 'lxc.autodev: 1'
+            - regexp: '^lxc\.hook\.autodev:'
+              line: "lxc.hook.autodev: bash -c '{{ proxmox_lxc.device_passthrough.hook_script }}'"
+          notify: restart container {{ item.id }}
+
+- name: Configure USB passthrough
+  when: proxmox_lxc.usb_passthrough.enabled | bool
+  block:
+    - name: Get USB device list
+      ansible.builtin.command: lsusb
+      register: usb_devices
+      changed_when: false
+
+    - name: Configure USB devices for containers
+      when: item.enabled | bool
+      loop: "{{ proxmox_lxc.usb_passthrough.containers }}"
+      ansible.builtin.lineinfile:
+        path: "/etc/pve/lxc/{{ item.id }}.conf"
+        line: "lxc.mount.entry: /dev/bus/usb/{{ usb_device.bus }}/{{ usb_device.device }} dev/bus/usb/{{ usb_device.bus }}/{{ usb_device.device }} none bind,optional,create=file"
+        state: present
+      loop_control:
+        loop_var: usb_device
+      loop: "{{ item.devices }}"
+      notify: restart container {{ item.id }}
+
+- name: Configure GPU passthrough
+  when: proxmox_lxc.gpu_passthrough.enabled | bool
+  block:
+    - name: Get GPU devices
+      ansible.builtin.command: lspci | grep -i vga
+      register: gpu_devices
+      changed_when: false
+
+    - name: Configure GPU devices for containers
+      when: item.enabled | bool
+      loop: "{{ proxmox_lxc.gpu_passthrough.containers }}"
+      ansible.builtin.lineinfile:
+        path: "/etc/pve/lxc/{{ item.id }}.conf"
+        line: "lxc.cgroup2.devices.allow: c {{ gpu_device.major }}:{{ gpu_device.minor }} rwm"
+        state: present
+      loop_control:
+        loop_var: gpu_device
+      loop: "{{ item.devices }}"
+      notify: restart container {{ item.id }}
+  tags: ["lxc", "devices", "gpu"] 

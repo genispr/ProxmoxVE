@@ -1,0 +1,65 @@
+---
+# =============================================================================
+# System Hardening Tasks
+# =============================================================================
+
+- name: Set secure sysctl parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-security.conf
+  loop: "{{ security_config.sysctl | dict2items }}"
+  when: security_config.sysctl is defined
+  notify: reload sysctl
+  tags: ["security", "hardening"]
+
+- name: Configure PAM limits
+  ansible.builtin.template:
+    src: security/limits.conf.j2
+    dest: /etc/security/limits.conf
+    mode: "0644"
+  when: security_config.pam_limits is defined
+  tags: ["security", "hardening"]
+
+- name: Configure system umask
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^UMASK"
+    line: "UMASK {{ security_config.umask | default('027') }}"
+  when: security_config.umask is defined
+  tags: ["security", "hardening"]
+
+- name: Apply security limits
+  pam_limits:
+    domain: "*"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  with_items:
+    - {
+        type: "-",
+        item: "nofile",
+        value: '{{ security_config.limits.nofile | default("65535") }}',
+      }
+    - {
+        type: "-",
+        item: "nproc",
+        value: '{{ security_config.limits.nproc | default("65535") }}',
+      }
+    - {
+        type: "-",
+        item: "memlock",
+        value: '{{ security_config.limits.memlock | default("unlimited") }}',
+      }
+  tags: ["security", "hardening"]
+
+- name: Enable kernel modules for security
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - apparmor
+    - br_netfilter
+  when: ansible_virtualization_type != "openvz"
+  tags: ["security", "hardening"]

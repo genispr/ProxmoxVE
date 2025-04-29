@@ -1,0 +1,107 @@
+# =============================================================================
+# Proxmox Network Monitoring Configuration
+# Managed by Ansible - DO NOT EDIT MANUALLY
+# =============================================================================
+
+# Node Exporter Configuration
+scrape_configs:
+  - job_name: 'lxc_network'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance: "{{ inventory_hostname }}"
+          role: "proxmox"
+          type: "lxc"
+
+    metrics_path: /metrics
+    scheme: http
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+)(?::\d+)?'
+        replacement: '${1}'
+
+# Network Interface Metrics
+  - job_name: 'network_interfaces'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance: "{{ inventory_hostname }}"
+          role: "proxmox"
+          type: "network"
+
+    metrics_path: /metrics
+    scheme: http
+    metric_relabel_configs:
+      - source_labels: [device]
+        target_label: interface
+      - source_labels: [__name__]
+        regex: 'node_network_(.+)'
+        target_label: metric_name
+        replacement: '${1}'
+
+# Firewall Metrics
+  - job_name: 'firewall_metrics'
+    scrape_interval: 60s
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          instance: "{{ inventory_hostname }}"
+          role: "proxmox"
+          type: "firewall"
+
+    metrics_path: /metrics
+    scheme: http
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'node_firewall_(.+)'
+        target_label: metric_name
+        replacement: '${1}'
+
+# Recording Rules
+rules:
+  - record: network:interface_bandwidth:rate5m
+    expr: |
+      rate(node_network_receive_bytes_total[5m]) +
+      rate(node_network_transmit_bytes_total[5m])
+
+  - record: network:packet_errors:rate5m
+    expr: |
+      rate(node_network_receive_errs_total[5m]) +
+      rate(node_network_transmit_errs_total[5m])
+
+  - record: network:dropped_packets:rate5m
+    expr: |
+      rate(node_network_receive_drop_total[5m]) +
+      rate(node_network_transmit_drop_total[5m])
+
+# Alerting Rules
+alerting:
+  - alert: HighNetworkErrors
+    expr: network:packet_errors:rate5m > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High network error rate on {{ $labels.instance }}
+      description: Network interface {{ $labels.device }} is experiencing high error rates
+
+  - alert: NetworkInterfaceDown
+    expr: node_network_up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Network interface down on {{ $labels.instance }}
+      description: Network interface {{ $labels.device }} is down
+
+  - alert: HighNetworkUtilization
+    expr: network:interface_bandwidth:rate5m > 1e8  # 100MB/s
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: High network utilization on {{ $labels.instance }}
+      description: Network interface {{ $labels.device }} is experiencing high utilization 

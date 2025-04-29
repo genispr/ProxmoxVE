@@ -1,0 +1,63 @@
+---
+# =============================================================================
+# ZFS Storage Configuration Tasks
+# =============================================================================
+
+- name: Install ZFS packages
+  ansible.builtin.apt:
+    name:
+      - zfsutils-linux
+      - zfs-zed
+    state: present
+  when: storage_config.zfs is defined
+  tags: ["storage", "zfs"]
+
+- name: Configure ZFS storage pools
+  ansible.builtin.command:
+    cmd: >-
+      pvesm add zfspool {{ item.name }}
+      --pool {{ item.pool }}
+      {% if item.content is defined %}--content {{ item.content | join(',') }}{% endif %}
+      {% if item.sparse is defined %}--sparse {{ item.sparse | int }}{% endif %}
+      {% if item.mountpoint is defined %}--mountpoint {{ item.mountpoint }}{% endif %}
+  loop: "{{ storage_config.zfs.pools | default([]) }}"
+  when:
+    - storage_config.zfs is defined
+    - storage_config.zfs.pools is defined
+  notify: reload storage
+  tags: ["storage", "zfs"]
+
+- name: Configure ZFS dataset properties
+  ansible.builtin.command:
+    cmd: >-
+      zfs set {{ item.1.key }}={{ item.1.value }} {{ item.0.pool }}/{{ item.1.dataset }}
+  loop: "{{ storage_config.zfs.pools | default([]) | subelements('datasets', skip_missing=True) }}"
+  when:
+    - storage_config.zfs is defined
+    - storage_config.zfs.pools is defined
+  tags: ["storage", "zfs"]
+
+- name: Configure ZFS ARC
+  ansible.builtin.template:
+    src: storage/zfs-arc.conf.j2
+    dest: /etc/modprobe.d/zfs.conf
+    mode: "0644"
+  when:
+    - storage_config.zfs is defined
+    - storage_config.zfs.arc is defined
+  notify: update initramfs
+  tags: ["storage", "zfs"]
+
+- name: Configure ZFS trim
+  ansible.builtin.cron:
+    name: "ZFS trim {{ item.pool }}"
+    job: "zpool trim {{ item.pool }}"
+    day: "{{ item.trim.day | default('1') }}"
+    hour: "{{ item.trim.hour | default('2') }}"
+    minute: "{{ item.trim.minute | default('0') }}"
+    state: "{{ item.trim.enabled | default(true) | ternary('present', 'absent') }}"
+  loop: "{{ storage_config.zfs.pools | default([]) }}"
+  when:
+    - storage_config.zfs is defined
+    - storage_config.zfs.pools is defined
+  tags: ["storage", "zfs"]

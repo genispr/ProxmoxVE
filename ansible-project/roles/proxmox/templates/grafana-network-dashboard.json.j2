@@ -1,0 +1,383 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": "Prometheus",
+        "enable": true,
+        "expr": "changes(node_network_up{instance=\"$instance\"}[1m]) > 0",
+        "name": "Interface Status Changes",
+        "titleFormat": "Interface {{device}} status changed",
+        "tagKeys": ["device", "instance"]
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Network Overview",
+      "type": "row",
+      "collapsed": false,
+      "panels": [
+        {
+          "title": "Network Bandwidth",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance=\"$instance\", device=~\"$interface\"}[5m])*8",
+              "legendFormat": "{{device}} Receive"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total{instance=\"$instance\", device=~\"$interface\"}[5m])*8",
+              "legendFormat": "{{device}} Transmit"
+            }
+          ],
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bps",
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "fillOpacity": 10,
+                "gradientMode": "opacity"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 100000000, "color": "yellow" },
+                  { "value": 1000000000, "color": "red" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Network Errors and Drops",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_errs_total{instance=\"$instance\", device=~\"$interface\"}[5m])",
+              "legendFormat": "{{device}} Rx Errors"
+            },
+            {
+              "expr": "rate(node_network_transmit_errs_total{instance=\"$instance\", device=~\"$interface\"}[5m])",
+              "legendFormat": "{{device}} Tx Errors"
+            },
+            {
+              "expr": "rate(node_network_receive_drop_total{instance=\"$instance\", device=~\"$interface\"}[5m])",
+              "legendFormat": "{{device}} Rx Drops"
+            },
+            {
+              "expr": "rate(node_network_transmit_drop_total{instance=\"$instance\", device=~\"$interface\"}[5m])",
+              "legendFormat": "{{device}} Tx Drops"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 50
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 10, "color": "yellow" },
+                  { "value": 50, "color": "red" }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Interface Status",
+      "type": "row",
+      "collapsed": false,
+      "panels": [
+        {
+          "title": "Interface Status",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "node_network_up{instance=\"$instance\", device=~\"$interface\"}",
+              "legendFormat": "{{device}}"
+            }
+          ],
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "name"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": { "text": "UP", "color": "green" },
+                    "0": { "text": "DOWN", "color": "red" }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "red" },
+                  { "value": 1, "color": "green" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Interface Statistics",
+          "type": "table",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "node_network_mtu_bytes{instance=\"$instance\", device=~\"$interface\"}",
+              "legendFormat": "{{device}}",
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "node_network_speed_bytes{instance=\"$instance\", device=~\"$interface\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "TCP/IP Statistics",
+      "type": "row",
+      "collapsed": false,
+      "panels": [
+        {
+          "title": "TCP Connection States",
+          "type": "piechart",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "node_netstat_Tcp_CurrEstab{instance=\"$instance\"}",
+              "legendFormat": "Established"
+            },
+            {
+              "expr": "node_netstat_Tcp_TimeWait{instance=\"$instance\"}",
+              "legendFormat": "Time Wait"
+            },
+            {
+              "expr": "node_netstat_Tcp_Listen{instance=\"$instance\"}",
+              "legendFormat": "Listen"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "values": ["value", "percent"]
+            }
+          }
+        },
+        {
+          "title": "TCP Performance",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(node_netstat_Tcp_RetransSegs{instance=\"$instance\"}[5m])",
+              "legendFormat": "Retransmits"
+            },
+            {
+              "expr": "rate(node_netstat_Tcp_InErrs{instance=\"$instance\"}[5m])",
+              "legendFormat": "Errors"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "points",
+                "lineInterpolation": "linear",
+                "spanNulls": true
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 10, "color": "yellow" },
+                  { "value": 50, "color": "red" }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Firewall Analysis",
+      "type": "row",
+      "collapsed": false,
+      "panels": [
+        {
+          "title": "Top Firewall Rules",
+          "type": "bargauge",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "topk(5, rate(node_firewall_rule_hits_total{instance=\"$instance\"}[5m]))",
+              "legendFormat": "{{rule}}"
+            }
+          ],
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 60, "color": "yellow" },
+                  { "value": 80, "color": "red" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Firewall Activity Heatmap",
+          "type": "heatmap",
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "rate(node_firewall_rule_hits_total{instance=\"$instance\"}[5m])",
+              "legendFormat": "{{rule}}"
+            }
+          ],
+          "options": {
+            "calculate": true,
+            "calculation": "last",
+            "yAxis": {
+              "decimals": 0,
+              "format": "short",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true,
+              "splitFactor": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(node_network_up, instance)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "current": {}
+      },
+      {
+        "name": "interface",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(node_network_up{instance=\"$instance\"}, device)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {}
+      },
+      {
+        "name": "interval",
+        "type": "interval",
+        "label": "Interval",
+        "values": ["30s", "1m", "5m", "10m", "30m", "1h"],
+        "current": {
+          "selected": true,
+          "text": "5m",
+          "value": "5m"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+  },
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "style": "dark",
+  "tags": ["network", "proxmox", "lxc"],
+  "title": "Proxmox LXC Network Dashboard",
+  "uid": "proxmox-lxc-network",
+  "version": 1
+} 

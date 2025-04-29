@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# Core System Tasks
+# =============================================================================
+# This file manages core system configuration and imports subtasks
+
+# Import system setup tasks
+- name: Import system setup tasks
+  ansible.builtin.import_tasks: setup.yml
+  tags: ["system", "setup"]
+
+# Import repository management tasks
+- name: Import repository management tasks
+  ansible.builtin.import_tasks: repository.yml
+  tags: ["system", "repository"]
+
+# Import microcode update tasks
+- name: Import microcode update tasks
+  ansible.builtin.import_tasks: microcode.yml
+  tags: ["system", "security", "microcode"]
+
+# Import service management tasks
+- name: Import service management tasks
+  ansible.builtin.import_tasks: services.yml
+  tags: ["system", "services"]
+  when: managed_services | length > 0
+
+# Import power management tasks from specialized directory
+- name: Import power management tasks
+  ansible.builtin.import_tasks: ../power/main.yml
+  tags: ["system", "power"] 

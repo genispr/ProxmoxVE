@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+# Debian System Repository Configuration for Proxmox
+# Last modified: {{ ansible_date_time.iso8601 }}
+#
+# Note: This is the main system repository configuration for Debian.
+# It includes all components required by Proxmox VE and PBS.
+# For more information, visit: https://pve.proxmox.com/wiki/Package_Repositories
+
+# Default System Repositories
+# -----------------------------------------------------------------------------
+# Main, updates, and security (including non-free components needed by Proxmox)
+deb http://deb.debian.org/debian {{ ansible_distribution_release }} main contrib non-free
+deb http://deb.debian.org/debian {{ ansible_distribution_release }}-updates main contrib non-free
+deb http://security.debian.org/debian-security {{ ansible_distribution_release }}-security main contrib non-free
+
+{% if ansible_distribution_release == "bookworm" %}
+# Debian 12 Bookworm Specific Components
+# -----------------------------------------------------------------------------
+# Additional non-free-firmware component required for hardware support
+deb http://deb.debian.org/debian {{ ansible_distribution_release }} non-free-firmware
+deb http://deb.debian.org/debian {{ ansible_distribution_release }}-updates non-free-firmware
+deb http://security.debian.org/debian-security {{ ansible_distribution_release }}-security non-free-firmware
+{% endif %}
+
+# Custom Additional Repositories
+# -----------------------------------------------------------------------------
+{% if proxmox_extra_repositories | default([]) %}
+# User-defined additional repositories
+{% for repo in proxmox_extra_repositories %}
+{{ repo }}
+{% endfor %}
+{% endif %}
+
+# Note: Proxmox-specific repositories are managed in separate files:
+# - Enterprise: /etc/apt/sources.list.d/pve-enterprise.list
+# - No-subscription: /etc/apt/sources.list.d/pve-no-subscription.list
+# - Test: /etc/apt/sources.list.d/pve-test.list
+
+# Original repository URLs for reference:
+# Enterprise: https://enterprise.proxmox.com/debian/pve
+# No-subscription: http://download.proxmox.com/debian/pve
+# Test: http://download.proxmox.com/debian/pve 

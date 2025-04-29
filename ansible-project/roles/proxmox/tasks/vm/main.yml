@@ -1,0 +1,47 @@
+---
+# =============================================================================
+# Virtual Machine Tasks
+# =============================================================================
+
+- name: Import VM resource tasks
+  ansible.builtin.import_tasks: resources.yml
+  tags: ["vm", "resources"]
+
+- name: Import VM device tasks
+  ansible.builtin.import_tasks: devices.yml
+  tags: ["vm", "devices"]
+
+- name: Import VM network tasks
+  ansible.builtin.import_tasks: network.yml
+  tags: ["vm", "network"]
+
+- name: Import VM storage tasks
+  ansible.builtin.import_tasks: storage.yml
+  tags: ["vm", "storage"]
+
+- name: Import VM backup tasks
+  ansible.builtin.import_tasks: backup.yml
+  tags: ["vm", "backup"]
+  when: proxmox_backup.enabled | bool
+
+- name: Import VM monitoring tasks
+  ansible.builtin.import_tasks: monitoring.yml
+  tags: ["vm", "monitoring"]
+  when: proxmox_monitoring is defined
+
+- name: Import VM template management tasks
+  ansible.builtin.import_tasks: templates.yml
+  tags: ["vm", "templates"]
+
+- name: Import VM maintenance tasks
+  ansible.builtin.import_tasks: maintenance.yml
+  tags: ["vm", "maintenance"]
+
+- name: Import VM snapshot management tasks
+  ansible.builtin.import_tasks: snapshots.yml
+  tags: ["vm", "snapshots"]
+
+- name: Import VM migration tasks
+  ansible.builtin.import_tasks: migration.yml
+  tags: ["vm", "migration"]
+  when: proxmox_cluster.enabled | bool 

@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Proxmox VE No-Subscription Repository
+# Last modified: {{ ansible_date_time.iso8601 }}
+#
+# Note: This repository provides access to Proxmox VE updates without a subscription.
+# Warning: Updates may be delayed compared to the enterprise repository.
+# For more information, visit: https://pve.proxmox.com/wiki/Package_Repositories
+
+{% if proxmox_repositories.pve.no_subscription %}
+deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription
+{% else %}
+# Repository disabled: No-subscription repository not enabled.
+# To enable, set proxmox_repositories.pve.no_subscription to true.
+# deb http://download.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-no-subscription
+{% endif %} 

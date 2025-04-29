@@ -1,0 +1,41 @@
+---
+# Virtual Machine Configuration
+# -----------------------------------------------------------------------------
+
+# VM Resource Management Configuration
+proxmox_vm:
+  cpu:
+    - vmid: 100 # Default VM ID
+      cores: 2
+      sockets: 1
+      vcpus: 2
+      type: "host" # Can be 'host' or specific CPU model
+      numa: false
+  memory:
+    - vmid: 100
+      size: 2048 # in MB
+      balloon: 1024 # Minimum guaranteed memory in MB
+      shares: 1000 # Memory shares for ballooning
+      hugepages: "none" # Can be 'none', '2', '1024'
+      swap: 0 # Swap size in MB
+  limits:
+    - vmid: 100
+      cpu: 0 # CPU usage limit (0 means unlimited)
+      cpuunits: 1000 # CPU weight for balancing
+      io_thread: true # Enable IO thread for better disk performance
+  monitoring:
+    - vmid: 100
+      agent: true # Enable QEMU Guest Agent
+      freeze: false # Freeze CPU on backup
+
+# Virtual Machine Base Configuration
+proxmox_vm_defaults:
+  memory: 1024
+  cores: 1
+  sockets: 1
+  storage: "local-lvm"
+  disk_format: "raw"
+  network_model: "virtio"
+  onboot: true
+  agent: true
+  cpu_type: "host"

@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# CPU Power Management Tasks
+# =============================================================================
+# This file manages CPU power-related settings for Proxmox VE
+
+- name: Install CPU frequency scaling tools
+  ansible.builtin.apt:
+    name:
+      - cpufrequtils
+      - linux-cpupower
+    state: present
+  when: power_config.cpu.enabled | default(true)
+  tags: ["power", "cpu"]
+
+- name: Configure CPU frequency scaling governor
+  ansible.builtin.template:
+    src: power/cpufreq.j2
+    dest: /etc/default/cpufrequtils
+    mode: "0644"
+  when: power_config.cpu.governor is defined
+  notify: reload cpufreq
+  tags: ["power", "cpu"]
+
+- name: Configure CPU frequency limits
+  ansible.builtin.lineinfile:
+    path: /etc/default/cpufrequtils
+    regexp: "^{{ item.key }}"
+    line: '{{ item.key }}="{{ item.value }}"'
+  loop: "{{ power_config.cpu.limits | dict2items }}"
+  when: power_config.cpu.limits is defined
+  notify: reload cpufreq
+  tags: ["power", "cpu"]
+
+- name: Configure CPU power management kernel parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-cpu-power.conf
+  loop: "{{ power_config.cpu.sysctl | dict2items }}"
+  when: power_config.cpu.sysctl is defined
+  notify: reload sysctl
+  tags: ["power", "cpu"]

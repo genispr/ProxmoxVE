@@ -8,5 +8,6 @@
     "editor.codeActionsOnSave": {
         "source.fixAll": "explicit"
     },
-    "geminicodeassist.enableTelemetry": false
+    "geminicodeassist.enableTelemetry": false,
+    "ansible.python.interpreterPath": "c:\\Python313\\python.exe"
 }

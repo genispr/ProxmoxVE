@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# PBS Interface Configuration Tasks
+# =============================================================================
+
+- name: Remove subscription nag message
+  when: proxmox_backup.pbs.remove_subscription_nag | default(true)
+  block:
+    - name: Configure nag removal script
+      copy:
+        dest: /etc/apt/apt.conf.d/no-nag-script
+        content: |
+          DPkg::Post-Invoke { "dpkg -V proxmox-widget-toolkit | grep -q '/proxmoxlib\.js$'; if [ $? -eq 1 ]; then { echo 'Removing subscription nag from UI...'; sed -i '/data\.status.*{/{s/\!//;s/active/NoMoreNagging/}' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; }; fi"; };
+        mode: "0644"
+
+    - name: Reinstall proxmox-widget-toolkit to apply nag removal
+      apt:
+        name: proxmox-widget-toolkit
+        state: present
+        force: yes
+
+- name: Configure PBS MOTD
+  when: proxmox_backup.pbs.motd_enabled | default(true)
+  copy:
+    dest: /etc/motd
+    content: |
+      Welcome to Proxmox Backup Server!
+
+      Web interface: https://{{ ansible_default_ipv4.address }}:{{ proxmox_backup.pbs.web_interface_port }}
+      Documentation: https://pbs.proxmox.com/docs/
+
+      For support and updates, visit: https://www.proxmox.com/
+    mode: "0644"

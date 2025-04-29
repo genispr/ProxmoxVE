@@ -1,0 +1,55 @@
+---
+# =============================================================================
+# High Availability Configuration
+# =============================================================================
+# This file manages the high availability services for Proxmox VE
+
+- name: Configure high availability services
+  block:
+    - name: Check if HA should be enabled
+      ansible.builtin.set_fact:
+        enable_ha: "{{ proxmox_ha.enabled | default(false) }}"
+
+    - name: Enable HA services
+      when: enable_ha | bool
+      block:
+        - name: Enable and start HA services
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: started
+            enabled: true
+          loop:
+            - pve-ha-lrm
+            - pve-ha-crm
+            - corosync
+          notify: restart pve-cluster
+
+    - name: Disable HA services
+      when: not enable_ha | bool
+      block:
+        - name: Stop and disable HA services
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            state: stopped
+            enabled: false
+          loop:
+            - pve-ha-lrm
+            - pve-ha-crm
+            - corosync
+  tags: ["ha", "system"]
+
+- name: Import HA group tasks
+  ansible.builtin.import_tasks: groups.yml
+  tags: ["ha", "groups"]
+
+- name: Import HA resource tasks
+  ansible.builtin.import_tasks: resources.yml
+  tags: ["ha", "resources"]
+
+- name: Import HA fence tasks
+  ansible.builtin.import_tasks: fencing.yml
+  tags: ["ha", "fencing"]
+
+- name: Import HA monitoring tasks
+  ansible.builtin.import_tasks: monitoring.yml
+  tags: ["ha", "monitoring"] 

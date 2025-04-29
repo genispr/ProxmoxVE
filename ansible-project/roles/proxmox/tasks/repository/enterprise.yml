@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# Enterprise Repository Configuration Tasks
+# =============================================================================
+
+- name: Configure enterprise repository
+  block:
+    - name: Add enterprise repository key
+      ansible.builtin.apt_key:
+        url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+        state: present
+      when: repository_config.enterprise.enabled | default(false)
+
+    - name: Add enterprise repository
+      ansible.builtin.apt_repository:
+        repo: "deb https://enterprise.proxmox.com/debian/pve {{ ansible_distribution_release }} pve-enterprise"
+        state: "{{ 'present' if repository_config.enterprise.enabled | default(false) else 'absent' }}"
+        filename: proxmox-enterprise
+        mode: "0644"
+      notify: update_cache
+
+    - name: Configure subscription
+      ansible.builtin.template:
+        src: repository/subscription.j2
+        dest: /etc/apt/auth.conf.d/enterprise.conf
+        mode: "0600"
+      when:
+        - repository_config.enterprise.enabled | default(false)
+        - repository_config.enterprise.subscription is defined
+  when: repository_config.enterprise is defined
+  tags: ["repository", "enterprise"]
+
+- name: Configure backup server enterprise repository
+  block:
+    - name: Add PBS enterprise repository key
+      ansible.builtin.apt_key:
+        url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+        state: present
+      when: repository_config.pbs_enterprise.enabled | default(false)
+
+    - name: Add PBS enterprise repository
+      ansible.builtin.apt_repository:
+        repo: "deb https://enterprise.proxmox.com/debian/pbs {{ ansible_distribution_release }} pbs-enterprise"
+        state: "{{ 'present' if repository_config.pbs_enterprise.enabled | default(false) else 'absent' }}"
+        filename: proxmox-backup-enterprise
+        mode: "0644"
+      notify: update_cache
+
+    - name: Configure PBS subscription
+      ansible.builtin.template:
+        src: repository/pbs-subscription.j2
+        dest: /etc/apt/auth.conf.d/pbs-enterprise.conf
+        mode: "0600"
+      when:
+        - repository_config.pbs_enterprise.enabled | default(false)
+        - repository_config.pbs_enterprise.subscription is defined
+  when: repository_config.pbs_enterprise is defined
+  tags: ["repository", "enterprise", "backup"]

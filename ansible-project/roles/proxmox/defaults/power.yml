@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# Power Management Default Variables
+# =============================================================================
+
+# CPU Power Management
+# -----------------------------------------------------------------------------
+proxmox_power:
+  cpu_freq:
+    # CPU governor options:
+    # schedutil    - Uses scheduler information for frequency scaling (balanced performance/power)
+    # performance  - Maximum frequency (highest performance)
+    # powersave    - Minimum frequency (maximum power savings)
+    # ondemand     - Aggressive dynamic scaling based on load
+    # conservative - Gradual dynamic scaling based on load
+    governor: "schedutil"
+    min_speed: "800MHz"
+    max_speed: "auto"
+
+  # Package Management
+  packages:
+    enabled: true
+
+  # ACPI Configuration
+  acpi:
+    enabled: true
+    events: ["powerbtn", "lid", "ac", "battery"]
+
+  # UPS Configuration
+  ups:
+    enabled: false
+    driver: "usbhid-ups"
+    port: "auto"
+    monitor_mode: "master"
+    shutdown_level: 20
+
+  # Power Saving Options
+  saving:
+    disk:
+      spindown_time: 240
+      apm_level: 127
+    usb_suspend: true
+    pci_pm: true
+
+  # PCIE ASPM policy: default, performance, powersave, powersupersave
+  pcie_aspm_policy: "performance"
+
+  # Disk Power Management
+  disks:
+    - name: "sda"
+      power_control: "on"
+      scheduler: "none"
+    - name: "sdb"
+      power_control: "on"
+      scheduler: "none"
+
+  # Network Interface Power Management
+  network_interfaces:
+    - name: "eth0"
+      power_control: "on"
+    - name: "eth1"
+      power_control: "on"
+
+  # Thermal Management
+  thermal_mode: "enabled"
+  thermal:
+    cpu_temp_max: 80
+    cpu_temp_crit: 95
+    gpu_temp_max: 85
+    gpu_temp_crit: 100
+
+  # Fan Control
+  fan_mode: "auto"
+  fan:
+    min_speed: 20
+    max_speed: 100
+    temp_thresholds:
+      - temp: 40
+        speed: 30
+      - temp: 50
+        speed: 50
+      - temp: 60
+        speed: 70
+      - temp: 70
+        speed: 100
+
+  # Power Monitoring
+  monitoring:
+    enabled: true
+    interval: 60
+    tools:
+      - powertop
+      - powerstat

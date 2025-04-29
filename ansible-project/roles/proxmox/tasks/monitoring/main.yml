@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# Monitoring Tasks
+# =============================================================================
+# This file manages monitoring configuration for Proxmox VE
+
+- name: Import system monitoring tasks
+  ansible.builtin.import_tasks: system.yml
+  tags: ["monitoring", "system"]
+
+- name: Import service monitoring tasks
+  ansible.builtin.import_tasks: services.yml
+  tags: ["monitoring", "services"]
+
+- name: Import resource monitoring tasks
+  ansible.builtin.import_tasks: resources.yml
+  tags: ["monitoring", "resources"]
+
+- name: Import performance monitoring tasks
+  ansible.builtin.import_tasks: performance.yml
+  tags: ["monitoring", "performance"]
+
+- name: Import SMART monitoring tasks
+  ansible.builtin.import_tasks: smart.yml
+  tags: ["monitoring", "smart"]
+  when: proxmox_monitoring.smart_enabled | bool
+
+- name: Import ZFS monitoring tasks
+  ansible.builtin.import_tasks: zfs.yml
+  tags: ["monitoring", "zfs"]
+
+- name: Import health check tasks
+  ansible.builtin.import_tasks: health.yml
+  tags: ["monitoring", "health"]
+  when: proxmox_monitoring.health_check_enabled | bool
+
+- name: Import metrics tasks
+  ansible.builtin.import_tasks: metrics.yml
+  tags: ["monitoring", "metrics"]
+
+- name: Import alert tasks
+  ansible.builtin.import_tasks: alerts.yml
+  tags: ["monitoring", "alerts"]
+  when: proxmox_email.enabled | bool 

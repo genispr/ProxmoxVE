@@ -1,0 +1,14 @@
+---
+# =============================================================================
+# Proxmox Backup Server Role Handlers
+# =============================================================================
+
+- name: restart pbs
+  systemd:
+    name: proxmox-backup
+    state: restarted
+
+- name: reload pbs
+  systemd:
+    name: proxmox-backup
+    state: reloaded 

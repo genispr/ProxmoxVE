@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# PVE Repository Tasks
+# =============================================================================
+
+- name: Configure PVE enterprise repository
+  block:
+    - name: Add PVE enterprise repository
+      ansible.builtin.template:
+        src: pve-enterprise.list.j2
+        dest: /etc/apt/sources.list.d/pve-enterprise.list
+        mode: "0644"
+      notify: update apt cache
+  when: proxmox_repositories.pve.enterprise | bool
+
+- name: Configure PVE no-subscription repository
+  block:
+    - name: Add PVE no-subscription repository
+      ansible.builtin.template:
+        src: pve-no-subscription.list.j2
+        dest: /etc/apt/sources.list.d/pve-no-subscription.list
+        mode: "0644"
+      notify: update apt cache
+
+    - name: Remove PVE enterprise repository
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/pve-enterprise.list
+        state: absent
+      notify: update apt cache
+  when: proxmox_repositories.pve.no_subscription | bool
+
+- name: Configure PVE test repository
+  block:
+    - name: Add PVE test repository
+      ansible.builtin.template:
+        src: pve-test.list.j2
+        dest: /etc/apt/sources.list.d/pve-test.list
+        mode: "0644"
+      notify: update apt cache
+  when: proxmox_repositories.pve.test | bool
+
+- name: Configure PVE repository key
+  ansible.builtin.apt_key:
+    url: https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg
+    state: present
+  notify: update apt cache

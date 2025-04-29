@@ -1,0 +1,57 @@
+---
+# =============================================================================
+# APT Repository Configuration Tasks
+# =============================================================================
+
+- name: Configure APT sources
+  ansible.builtin.template:
+    src: repository/sources.list.j2
+    dest: /etc/apt/sources.list
+    mode: "0644"
+    backup: yes
+  when: repository_config.apt.sources is defined
+  notify: update_cache
+  tags: ["repository", "apt"]
+
+- name: Add APT repository keys
+  ansible.builtin.apt_key:
+    url: "{{ item.url }}"
+    state: present
+  loop: "{{ repository_config.apt.keys | default([]) }}"
+  when: repository_config.apt.keys is defined
+  notify: update_cache
+  tags: ["repository", "apt"]
+
+- name: Configure APT preferences
+  ansible.builtin.template:
+    src: repository/preferences.j2
+    dest: /etc/apt/preferences.d/{{ item.name }}
+    mode: "0644"
+  loop: "{{ repository_config.apt.preferences | default([]) }}"
+  when: repository_config.apt.preferences is defined
+  notify: update_cache
+  tags: ["repository", "apt"]
+
+- name: Configure APT configuration
+  ansible.builtin.template:
+    src: repository/apt.conf.j2
+    dest: /etc/apt/apt.conf.d/99proxmox
+    mode: "0644"
+  when: repository_config.apt.config is defined
+  tags: ["repository", "apt"]
+
+- name: Remove subscription nag message
+  block:
+    - name: Modify JavaScript file
+      ansible.builtin.replace:
+        path: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+        regexp: "data.status !== 'Active'"
+        replace: "false"
+      notify: reinstall widget toolkit
+
+    - name: Update package status
+      ansible.builtin.dpkg_selections:
+        name: proxmox-widget-toolkit
+        selection: hold
+  when: repository_config.apt.remove_subscription_nag | default(false)
+  tags: ["repository", "apt"]

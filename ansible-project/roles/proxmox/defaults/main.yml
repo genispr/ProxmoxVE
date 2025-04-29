@@ -3,6 +3,22 @@
 # Proxmox Role Default Variables
 # =============================================================================
 
+# Import split configuration files
+# -----------------------------------------------------------------------------
+- include_vars: core.yml
+- include_vars: power.yml
+- include_vars: monitoring.yml
+- include_vars: security.yml
+- include_vars: repository.yml
+- include_vars: network.yml
+- include_vars: storage.yml
+- include_vars: ha.yml
+- include_vars: backup.yml
+- include_vars: cluster.yml
+- include_vars: email.yml
+- include_vars: lxc.yml
+- include_vars: vm.yml
+
 # System Configuration
 # -----------------------------------------------------------------------------
 proxmox_hostname: ""
@@ -68,6 +84,9 @@ proxmox_security:
     disable_modules: ["cramfs", "freevxfs", "jffs2", "hfs", "hfsplus", "udf"]
     sysrq: 0
     kexec_load_disabled: 1
+    keys:
+      maxkeys: 2000
+      maxbytes: 2000000
     
   limits:
     nproc: 65535
@@ -142,10 +161,16 @@ proxmox_logging:
 
 # Repository Configuration
 # -----------------------------------------------------------------------------
-proxmox_enterprise_repo_enabled: false
-proxmox_no_subscription_repo_enabled: true
-proxmox_test_repo_enabled: false
-proxmox_extra_repositories: []
+proxmox_repositories:
+  pve:
+    enterprise: false      # Enable enterprise repository (requires subscription)
+    no_subscription: true  # Enable community repository
+    test: false           # Enable test repository
+  pbs:
+    enterprise: false      # Enable enterprise repository (requires subscription)
+    no_subscription: true  # Enable community repository
+    test: false           # Enable test repository
+    version: "{{ ansible_distribution_release }}"  # Must be "bullseye" or "bookworm"
 
 # Network Configuration
 # -----------------------------------------------------------------------------
@@ -172,24 +197,81 @@ proxmox_selinux_state: "disabled"
 
 # LXC Container Base Configuration
 # -----------------------------------------------------------------------------
-proxmox_lxc_templates:
-  debian: "debian-11-standard"
-  ubuntu: "ubuntu-22.04-standard"
-  alpine: "alpine-3.17-default"
+proxmox_lxc:
+  templates:
+    debian: "debian-11-standard"
+    ubuntu: "ubuntu-22.04-standard"
+    alpine: "alpine-3.17-default"
 
-proxmox_lxc_defaults:
-  memory: 512
-  swap: 512
-  cores: 1
-  storage: "local-lvm"
-  unprivileged: true
-  features:
-    nesting: false
-    keyctl: false
-  mounts: []
-  nameserver: "1.1.1.1"
-  searchdomain: ""
-  onboot: true
+  defaults:
+    memory: 512
+    swap: 512
+    cores: 1
+    storage: "local-lvm"
+    unprivileged: true
+    features:
+      nesting: false
+      keyctl: false
+    mounts: []
+    nameserver: "1.1.1.1"
+    searchdomain: ""
+    onboot: true
+
+  network:
+    interfaces: []  # List of network interfaces to configure
+    default_bridge: "vmbr0"
+    default_type: "veth"
+    default_firewall: true
+    default_mtu: 1500
+    default_rate: null  # Network rate limit in MB/s
+    templates:
+      # Common network configurations that can be referenced
+      internal:
+        type: "veth"
+        bridge: "vmbr0"
+        firewall: true
+        ip: "dhcp"
+      dmz:
+        type: "veth"
+        bridge: "vmbr1"
+        firewall: true
+        tag: 100  # VLAN tag
+      isolated:
+        type: "veth"
+        bridge: "vmbr2"
+        firewall: false
+    firewall_templates:
+      # Common firewall rule sets that can be referenced
+      web:
+        - pos: 1
+          action: "ACCEPT"
+          proto: "tcp"
+          dport: "80,443"
+          comment: "Allow HTTP/HTTPS"
+      ssh:
+        - pos: 1
+          action: "ACCEPT"
+          proto: "tcp"
+          dport: "22"
+          comment: "Allow SSH"
+      deny_all:
+        - pos: 999
+          action: "REJECT"
+          type: "in"
+          comment: "Deny all incoming traffic"
+
+  ip_tagging:
+    enabled: false
+    cidr_list:
+      - 192.168.0.0/16
+      - 172.16.0.0/12
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+    intervals:
+      loop: 60
+      fw_net_interface_check: 60
+      lxc_status_check: -1
+      force_update: 1800
 
 # Virtual Machine Base Configuration
 # -----------------------------------------------------------------------------
@@ -203,6 +285,21 @@ proxmox_vm_defaults:
   onboot: true
   agent: true
   cpu_type: "host"
+
+# Email Notification Configuration
+# -----------------------------------------------------------------------------
+proxmox_email:
+  enabled: false
+  server: ""
+  port: 25
+  security: "none"
+  from_address: ""
+  to_address: ""
+
+# Subscription Configuration
+# -----------------------------------------------------------------------------
+proxmox_subscription:
+  disable_nag: true  # Set to false to keep subscription nag enabled
 
 # Service Management
 # -----------------------------------------------------------------------------
@@ -223,16 +320,41 @@ managed_services:
     dependencies: []
     environment:
       KEY: "value"
+  
+  # PBS Service (when enabled)
+  - name: "proxmox-backup"
+    state: "started"
+    enabled: true
+    when: "proxmox_backup.pbs_enabled | bool"
 
 # Backup Configuration
 # -----------------------------------------------------------------------------
 proxmox_backup:
-  enabled: false
-  storage: "local"
-  schedule: "0 0 * * *"
-  retention: 7
-  compress: "zstd"
-  mode: "snapshot"
+  enabled: false          # Enable backup functionality
+  pbs_enabled: false      # Enable Proxmox Backup Server
+  storage: "local"        # Default storage for backups
+  backup_dir: "/var/lib/vz/dump"  # Default backup directory
+  restore_dir: "/var/lib/vz/restore"  # Default restore directory
+  mode: "snapshot"        # Backup mode (snapshot, suspend, stop)
+  compress: "zstd"        # Compression algorithm
+  schedule:
+    minute: "0"
+    hour: "0"
+    day: "*"
+    month: "*"
+    weekday: "*"
+  retention: 7            # Number of days to keep backups
+  restore:
+    enabled: true        # Enable restore functionality
+  
+  # PBS-specific settings
+  pbs:
+    remove_subscription_nag: true
+    motd_enabled: true
+    web_interface_port: 8007
+    dependencies:
+      - gpg
+      - proxmox-backup-server
 
 # Cluster Configuration
 # -----------------------------------------------------------------------------
@@ -243,12 +365,34 @@ proxmox_cluster:
   quorum_votes: 1
   link_mode: "static"
 
-# Email Notification Configuration
+# High Availability Configuration
 # -----------------------------------------------------------------------------
-proxmox_email:
-  enabled: false
-  server: ""
-  port: 25
-  security: "none"
-  from_address: ""
-  to_address: "" 
+proxmox_ha:
+  enabled: false  # Set to true to enable HA services 
+
+# VM Resource Management Configuration
+# Example configuration for managing VM resources
+proxmox_vm:
+  cpu:
+    - vmid: 100  # Default VM ID
+      cores: 2
+      sockets: 1
+      vcpus: 2
+      type: "host"  # Can be 'host' or specific CPU model
+      numa: false
+  memory:
+    - vmid: 100
+      size: 2048  # in MB
+      balloon: 1024  # Minimum guaranteed memory in MB
+      shares: 1000  # Memory shares for ballooning
+      hugepages: "none"  # Can be 'none', '2', '1024'
+      swap: 0  # Swap size in MB
+  limits:
+    - vmid: 100
+      cpu: 0  # CPU usage limit (0 means unlimited)
+      cpuunits: 1000  # CPU weight for balancing
+      io_thread: true  # Enable IO thread for better disk performance
+  monitoring:
+    - vmid: 100
+      agent: true  # Enable QEMU Guest Agent
+      freeze: false  # Freeze CPU on backup

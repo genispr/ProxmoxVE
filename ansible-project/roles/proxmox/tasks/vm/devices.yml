@@ -1,0 +1,100 @@
+---
+# =============================================================================
+# VM Device Management Tasks
+# =============================================================================
+# This file manages VM device configurations including storage, PCI, and USB
+
+- name: Configure VM storage devices
+  when: proxmox_vm.storage is defined
+  block:
+    - name: Configure VM disks
+      community.general.proxmox_disk:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        disk: "{{ item.disk }}"
+        storage: "{{ item.storage }}"
+        size: "{{ item.size }}"
+        format: "{{ item.format | default('raw') }}"
+        cache: "{{ item.cache | default('none') }}"
+        backup: "{{ item.backup | default(true) }}"
+        replicate: "{{ item.replicate | default(true) }}"
+        state: present
+      loop: "{{ proxmox_vm.storage.disks }}"
+  tags: ["vm", "devices", "storage"]
+
+- name: Configure VM PCI passthrough
+  when: proxmox_vm.pci_devices is defined
+  block:
+    - name: Enable IOMMU
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: '^GRUB_CMDLINE_LINUX_DEFAULT="(.*)"\s*$'
+        line: 'GRUB_CMDLINE_LINUX_DEFAULT="$1 intel_iommu=on iommu=pt"'
+        backrefs: true
+      notify: update grub
+
+    - name: Load VFIO modules
+      ansible.builtin.lineinfile:
+        path: /etc/modules
+        line: "{{ item }}"
+      loop:
+        - vfio
+        - vfio_iommu_type1
+        - vfio_pci
+        - vfio_virqfd
+      notify: reload modules
+
+    - name: Configure PCI device passthrough
+      community.general.proxmox_pci:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        pci_device: "{{ item.device }}"
+        romfile: "{{ item.romfile | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.pci_devices }}"
+  tags: ["vm", "devices", "pci"]
+
+- name: Configure VM USB passthrough
+  when: proxmox_vm.usb_devices is defined
+  block:
+    - name: Configure USB device passthrough
+      community.general.proxmox_usb:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        usb_device: "{{ item.device }}"
+        host_device: "{{ item.host_device }}"
+        state: present
+      loop: "{{ proxmox_vm.usb_devices }}"
+  tags: ["vm", "devices", "usb"]
+
+- name: Configure VM CD-ROM devices
+  when: proxmox_vm.cdrom is defined
+  block:
+    - name: Configure CD-ROM media
+      community.general.proxmox_disk:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        disk: ide2
+        media: cdrom
+        iso: "{{ item.iso | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_vm.cdrom }}"
+  tags: ["vm", "devices", "cdrom"]
+
+- name: Configure VM serial ports
+  when: proxmox_vm.serial_ports is defined
+  block:
+    - name: Configure serial port devices
+      community.general.proxmox_serial:
+        api_host: localhost
+        api_user: root@pam
+        vmid: "{{ item.vmid }}"
+        port: "{{ item.port }}"
+        device: "{{ item.device }}"
+        state: present
+      loop: "{{ proxmox_vm.serial_ports }}"
+  tags: ["vm", "devices", "serial"]

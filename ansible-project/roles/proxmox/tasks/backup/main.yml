@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# Backup Tasks
+# =============================================================================
+
+- name: Import backup configuration tasks
+  ansible.builtin.import_tasks: config.yml
+  tags: ["backup", "config"]
+
+- name: Import backup schedule tasks
+  ansible.builtin.import_tasks: schedule.yml
+  tags: ["backup", "schedule"]
+
+- name: Import backup storage tasks
+  ansible.builtin.import_tasks: storage.yml
+  tags: ["backup", "storage"]
+
+- name: Import backup retention tasks
+  ansible.builtin.import_tasks: retention.yml
+  tags: ["backup", "retention"]
+
+- name: Import restore tasks
+  ansible.builtin.import_tasks: restore.yml
+  tags: ["backup", "restore"]
+  when: proxmox_backup.restore.enabled | bool
+
+- name: Import PBS tasks
+  ansible.builtin.import_tasks: pbs.yml
+  tags: ["backup", "pbs"]
+  when: proxmox_backup.pbs_enabled | bool 

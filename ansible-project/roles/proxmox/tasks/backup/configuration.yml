@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# Backup Configuration Tasks
+# =============================================================================
+# This file manages backup configuration settings
+
+- name: Configure backup storage
+  block:
+    - name: Ensure backup directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ proxmox_backup.backup_dir }}"
+        - "{{ proxmox_backup.restore_dir }}"
+
+    - name: Configure backup storage in Proxmox
+      community.general.proxmox_storage:
+        api_host: localhost
+        api_user: root@pam
+        name: "{{ proxmox_backup.storage }}"
+        type: dir
+        path: "{{ proxmox_backup.backup_dir }}"
+        content: backup
+        state: present
+      when: proxmox_backup.storage not in ['local', 'local-lvm']
+  tags: ["backup", "storage"]
+
+- name: Configure backup retention
+  block:
+    - name: Configure backup cleanup schedule
+      ansible.builtin.cron:
+        name: "Proxmox backup cleanup"
+        job: "find {{ proxmox_backup.backup_dir }} -type f -mtime +{{ proxmox_backup.retention }} -delete"
+        special_time: daily
+      when: proxmox_backup.retention is defined
+
+    - name: Configure backup rotation settings
+      ansible.builtin.template:
+        src: vzdump.conf.j2
+        dest: /etc/vzdump.conf
+        mode: "0644"
+  tags: ["backup", "retention"]
+
+- name: Configure backup notifications
+  when: proxmox_backup.notifications.enabled | bool
+  block:
+    - name: Install notification dependencies
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - mailutils
+        - postfix
+      when: proxmox_backup.notifications.method == 'email'
+
+    - name: Configure notification script
+      ansible.builtin.template:
+        src: "backup-notify-{{ proxmox_backup.notifications.method }}.sh.j2"
+        dest: /usr/local/bin/backup-notify
+        mode: "0755"
+
+    - name: Configure notification settings
+      ansible.builtin.template:
+        src: backup-notifications.conf.j2
+        dest: /etc/proxmox-backup/notifications.conf
+        mode: "0644"
+  tags: ["backup", "notifications"]
+
+- name: Configure backup compression
+  block:
+    - name: Set backup compression algorithm
+      ansible.builtin.lineinfile:
+        path: /etc/vzdump.conf
+        regexp: "^compression:"
+        line: "compression: {{ proxmox_backup.compress }}"
+        create: true
+  tags: ["backup", "compression"]
+
+- name: Configure backup scheduling
+  when: proxmox_backup.schedule is defined
+  block:
+    - name: Configure backup schedule
+      ansible.builtin.cron:
+        name: "Proxmox backup"
+        job: "vzdump --all --compress {{ proxmox_backup.compress }} --mode {{ proxmox_backup.mode }} --storage {{ proxmox_backup.storage }}"
+        minute: "{{ proxmox_backup.schedule.minute | default('0') }}"
+        hour: "{{ proxmox_backup.schedule.hour | default('0') }}"
+        day: "{{ proxmox_backup.schedule.day | default('*') }}"
+        month: "{{ proxmox_backup.schedule.month | default('*') }}"
+        weekday: "{{ proxmox_backup.schedule.weekday | default('*') }}"
+  tags: ["backup", "schedule"]

@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Thermal Management Tasks
+# =============================================================================
+
+- name: Install thermal management packages
+  ansible.builtin.apt:
+    name:
+      - thermald
+      - lm-sensors
+      - fancontrol
+    state: present
+  when: power_config.thermal.enabled | default(true)
+  tags: ["power", "thermal"]
+
+- name: Configure thermal daemon
+  ansible.builtin.template:
+    src: power/thermal-conf.j2
+    dest: /etc/thermald/thermal-conf.xml
+    mode: "0644"
+  when: power_config.thermal.config is defined
+  notify: restart thermald
+  tags: ["power", "thermal"]
+
+- name: Configure fan control
+  ansible.builtin.template:
+    src: power/fancontrol.j2
+    dest: /etc/fancontrol
+    mode: "0644"
+  when: power_config.thermal.fancontrol is defined
+  notify: restart fancontrol
+  tags: ["power", "thermal"]
+
+- name: Ensure thermal services are enabled and started
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - thermald
+    - fancontrol
+  when: power_config.thermal.enabled | default(true)
+  tags: ["power", "thermal"]
+
+- name: Configure thermal thresholds
+  ansible.builtin.template:
+    src: power/thermal-thresholds.j2
+    dest: /etc/sysfs.d/thermal.conf
+    mode: "0644"
+  when: power_config.thermal.thresholds is defined
+  tags: ["power", "thermal"]

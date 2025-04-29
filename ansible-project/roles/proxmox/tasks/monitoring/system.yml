@@ -1,0 +1,26 @@
+---
+# =============================================================================
+# System Monitoring Tasks
+# =============================================================================
+# This file manages system-level monitoring configuration for Proxmox VE
+
+- name: Configure system monitoring
+  block:
+    - name: Install monitoring packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - prometheus-node-exporter
+        - collectd
+      when: proxmox_monitoring.enabled | bool
+
+    - name: Configure collectd
+      ansible.builtin.template:
+        src: collectd.conf.j2
+        dest: /etc/collectd/collectd.conf
+        mode: "0644"
+      notify: restart collectd
+      when: proxmox_monitoring.collectd | bool
+
+  tags: ["monitoring", "system"]

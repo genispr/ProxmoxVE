@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# PBS Repository Tasks
+# =============================================================================
+
+- name: Configure PBS enterprise repository
+  block:
+    - name: Add PBS enterprise repository
+      ansible.builtin.template:
+        src: pbs-enterprise.list.j2
+        dest: /etc/apt/sources.list.d/pbs-enterprise.list
+        mode: "0644"
+      notify: update apt cache
+  when: proxmox_repositories.pbs.enterprise | bool
+
+- name: Configure PBS no-subscription repository
+  block:
+    - name: Add PBS no-subscription repository
+      ansible.builtin.template:
+        src: pbs-no-subscription.list.j2
+        dest: /etc/apt/sources.list.d/pbs-no-subscription.list
+        mode: "0644"
+      notify: update apt cache
+
+    - name: Remove PBS enterprise repository
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/pbs-enterprise.list
+        state: absent
+      notify: update apt cache
+  when: proxmox_repositories.pbs.no_subscription | bool
+
+- name: Configure PBS test repository
+  block:
+    - name: Add PBS test repository
+      ansible.builtin.template:
+        src: pbs-test.list.j2
+        dest: /etc/apt/sources.list.d/pbs-test.list
+        mode: "0644"
+      notify: update apt cache
+  when: proxmox_repositories.pbs.test | bool
+
+- name: Configure PBS repository key
+  ansible.builtin.apt_key:
+    url: https://enterprise.proxmox.com/debian/proxmox-release-{{ proxmox_repositories.pbs.version }}.gpg
+    state: present
+  notify: update apt cache

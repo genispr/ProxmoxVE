@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# System Setup Tasks
+# =============================================================================
+
+- name: Set system hostname
+  ansible.builtin.hostname:
+    name: "{{ proxmox_hostname }}"
+  when: proxmox_hostname | length > 0
+  notify: restart hostname
+
+- name: Configure system locale
+  ansible.builtin.locale_gen:
+    name: "{{ proxmox_locale }}"
+    state: present
+  notify: update locale
+
+- name: Configure keyboard layout
+  ansible.builtin.command:
+    cmd: "localectl set-keymap {{ proxmox_keyboard_layout }}"
+  changed_when: false
+  when: proxmox_keyboard_layout is defined
+
+- name: Configure system timezone
+  community.general.timezone:
+    name: "{{ proxmox_timezone }}"
+  notify: update timezone
+
+- name: Configure system performance settings
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/99-proxmox.conf
+    reload: true
+  loop: "{{ proxmox_sysctl | dict2items }}"
+  notify: reload sysctl
+
+- name: Configure CPU performance settings
+  ansible.builtin.copy:
+    dest: "/etc/default/cpufrequtils"
+    content: |
+      GOVERNOR="{{ proxmox_cpu.governor }}"
+      {% if proxmox_cpu.mitigations %}
+      MITIGATIONS=on
+      {% else %}
+      MITIGATIONS=off
+      {% endif %}
+      {% if ansible_processor_vendor == "Intel" %}
+      INTEL_PSTATE="{{ proxmox_cpu.intel_pstate }}"
+      {% elif ansible_processor_vendor == "AMD" %}
+      AMD_PSTATE="{{ proxmox_cpu.amd_pstate }}"
+      {% endif %}
+    mode: "0644"
+  notify: restart cpufrequtils
+
+- name: Configure storage optimizations
+  ansible.builtin.template:
+    src: "storage-optimizations.conf.j2"
+    dest: "/etc/sysfs.d/storage-optimizations.conf"
+    mode: "0644"
+  notify: reload sysfs

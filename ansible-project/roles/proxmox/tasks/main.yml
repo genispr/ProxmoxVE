@@ -1,86 +1,105 @@
 ---
 # =============================================================================
-# Proxmox Role Main Tasks
+# Proxmox VE Role Tasks
 # =============================================================================
 
-# Pre-flight Checks
+# Pre-Installation
 # -----------------------------------------------------------------------------
-- name: Include pre-flight checks
-  ansible.builtin.import_tasks: preflight.yml
-  tags: ['always']
+- name: Validate configuration
+  ansible.builtin.import_tasks: validate.yml
+  tags: ["validate", "pre-install"]
 
-# System Setup
-# -----------------------------------------------------------------------------
-- name: Include system setup tasks
-  ansible.builtin.import_tasks: system_setup.yml
-  tags: ['system', 'setup']
-
-# Repository Management
-# -----------------------------------------------------------------------------
-- name: Include repository management tasks
+- name: Configure package repositories
   ansible.builtin.import_tasks: repository.yml
-  tags: ['repository']
+  tags: ["repository", "pre-install"]
 
-# Network Configuration
+# System Configuration
 # -----------------------------------------------------------------------------
-- name: Include network configuration tasks
-  ansible.builtin.import_tasks: network.yml
-  tags: ['network']
+- name: Configure base system
+  ansible.builtin.import_tasks: system.yml
+  tags: ["system"]
 
-# Storage Configuration
-# -----------------------------------------------------------------------------
-- name: Include storage configuration tasks
-  ansible.builtin.import_tasks: storage.yml
-  tags: ['storage']
+- name: Configure firmware
+  ansible.builtin.import_tasks: firmware.yml
+  tags: ["firmware", "system"]
 
-# Security Configuration
-# -----------------------------------------------------------------------------
-- name: Include security configuration tasks
+- name: Configure power management
+  ansible.builtin.import_tasks: power.yml
+  tags: ["power", "system"]
+
+- name: Configure security settings
   ansible.builtin.import_tasks: security.yml
-  tags: ['security']
+  tags: ["security", "system"]
 
-# Service Management
+# Network & Storage
 # -----------------------------------------------------------------------------
-- name: Include service management tasks
-  ansible.builtin.import_tasks: services.yml
-  tags: ['services']
-  when: managed_services | length > 0
+- name: Configure network
+  ansible.builtin.import_tasks: network.yml
+  tags: ["network"]
+  when: network_config is defined
 
-# LXC Container Management
-# -----------------------------------------------------------------------------
-- name: Include LXC container management tasks
-  ansible.builtin.import_tasks: lxc.yml
-  tags: ['lxc']
+- name: Configure storage
+  ansible.builtin.import_tasks: storage.yml
+  tags: ["storage"]
+  when: storage_config is defined
 
-# Virtual Machine Management
+# Virtualization
 # -----------------------------------------------------------------------------
-- name: Include virtual machine management tasks
+- name: Configure virtual machines
   ansible.builtin.import_tasks: vm.yml
-  tags: ['vm']
+  tags: ["vm", "virtualization"]
+  when: proxmox_vm is defined
 
-# Backup Configuration
-# -----------------------------------------------------------------------------
-- name: Include backup configuration tasks
-  ansible.builtin.import_tasks: backup.yml
-  tags: ['backup']
-  when: proxmox_backup.enabled | bool
+- name: Configure LXC containers
+  ansible.builtin.import_tasks: lxc.yml
+  tags: ["lxc", "virtualization"]
+  when: proxmox_lxc is defined
 
-# Cluster Configuration
+- name: Configure VM resources
+  ansible.builtin.import_tasks: resources.yml
+  tags: ["resources", "virtualization"]
+  when: proxmox_vm is defined
+
+# High Availability
 # -----------------------------------------------------------------------------
-- name: Include cluster configuration tasks
+- name: Configure cluster
   ansible.builtin.import_tasks: cluster.yml
-  tags: ['cluster']
+  tags: ["cluster", "ha"]
   when: proxmox_cluster.enabled | bool
 
-# Email Configuration
+- name: Configure high availability
+  ansible.builtin.import_tasks: ha.yml
+  tags: ["ha"]
+  when: proxmox_ha.enabled | bool
+
+# Operations
 # -----------------------------------------------------------------------------
-- name: Include email configuration tasks
+- name: Configure backup
+  ansible.builtin.import_tasks: backup.yml
+  tags: ["backup", "operations"]
+  when: proxmox_backup.enabled | bool
+
+- name: Configure monitoring
+  ansible.builtin.import_tasks: monitoring.yml
+  tags: ["monitoring", "operations"]
+  when: proxmox_monitoring is defined
+
+- name: Configure email notifications
   ansible.builtin.import_tasks: email.yml
-  tags: ['email']
+  tags: ["email", "operations"]
   when: proxmox_email.enabled | bool
 
 # Post-configuration Tasks
 # -----------------------------------------------------------------------------
 - name: Include post-configuration tasks
-  ansible.builtin.import_tasks: post_config.yml
-  tags: ['post-config'] 
+  ansible.builtin.import_tasks: post/main.yml
+  tags: ["post-config"]
+
+# Configure VM resources
+- name: Configure VM resources
+  ansible.builtin.import_tasks: vm_resources.yml
+  when: proxmox_vm is defined
+  tags:
+    - proxmox
+    - vm
+    - resources 

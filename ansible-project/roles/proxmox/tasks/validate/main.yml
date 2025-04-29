@@ -1,0 +1,20 @@
+---
+# =============================================================================
+# Configuration Validation Tasks
+# =============================================================================
+
+- name: Import system validation tasks
+  ansible.builtin.import_tasks: system.yml
+  tags: ["validate", "system"]
+
+- name: Import security validation tasks
+  ansible.builtin.import_tasks: security.yml
+  tags: ["validate", "security"]
+
+- name: Import VM validation tasks
+  ansible.builtin.import_tasks: vm.yml
+  tags: ["validate", "vm"]
+
+- name: Import service validation tasks
+  ansible.builtin.import_tasks: services.yml
+  tags: ["validate", "services"] 

@@ -1,0 +1,50 @@
+---
+# =============================================================================
+# Repository Default Variables
+# =============================================================================
+
+# Repository Configuration
+# -----------------------------------------------------------------------------
+proxmox_repositories:
+  # Proxmox VE Repository Configuration
+  pve:
+    enterprise: false # Enable enterprise repository (requires subscription)
+    no_subscription: true # Enable community repository
+    test: false # Enable test repository
+    version: "{{ ansible_distribution_release }}" # Must be "bullseye" or "bookworm"
+
+  # Proxmox Backup Server Repository Configuration
+  pbs:
+    enterprise: false # Enable enterprise repository (requires subscription)
+    no_subscription: true # Enable community repository
+    test: false # Enable test repository
+    version: "{{ ansible_distribution_release }}" # Must be "bullseye" or "bookworm"
+
+  # General Repository Configuration
+  general:
+    components: ["main", "contrib", "non-free", "non-free-firmware"]
+    security_updates: true
+    backports: false
+
+  # Package Management
+  packages:
+    update_cache: true
+    cache_valid_time: 3600
+    allow_downgrade: false
+    autoremove: true
+    autoclean: true
+
+  # Repository Keys
+  keys:
+    pve:
+      url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+      state: present
+    pbs:
+      url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+      state: present
+
+  # Repository Backup
+  backup:
+    enabled: true
+    path: "/etc/apt/sources.list.backup"
+    keep: true

@@ -1,0 +1,62 @@
+---
+# =============================================================================
+# Repository Configuration Main Tasks
+# =============================================================================
+
+- name: Ensure repository configuration directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  with_items:
+    - /etc/apt/sources.list.d
+    - /etc/apt/preferences.d
+    - /etc/apt/auth.conf.d
+  tags: ["repository", "setup"]
+
+- name: Include APT repository configuration tasks
+  ansible.builtin.include_tasks: repository/apt.yml
+  when: repository_config.apt is defined
+  tags: ["repository", "apt"]
+
+- name: Include enterprise repository configuration tasks
+  ansible.builtin.include_tasks: repository/enterprise.yml
+  when: repository_config.enterprise is defined or repository_config.pbs_enterprise is defined
+  tags: ["repository", "enterprise"]
+
+- name: Include test repository configuration tasks
+  ansible.builtin.include_tasks: repository/test.yml
+  when: repository_config.test is defined
+  tags: ["repository", "test"]
+
+# Package Management
+- name: Update package cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: ["repository", "packages"]
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ repository_config.packages | default([]) }}"
+  when: repository_config.packages is defined
+  tags: ["repository", "packages"]
+
+- name: Remove unwanted packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+  loop: "{{ repository_config.remove_packages | default([]) }}"
+  when: repository_config.remove_packages is defined
+  tags: ["repository", "packages"]
+
+- name: Clean package cache
+  ansible.builtin.apt:
+    autoclean: yes
+    autoremove: yes
+  tags: ["repository", "packages"]

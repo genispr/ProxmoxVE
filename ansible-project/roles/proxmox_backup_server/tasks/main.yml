@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# Proxmox Backup Server Installation and Configuration
+# =============================================================================
+
+# Pre-flight Checks
+# -----------------------------------------------------------------------------
+- name: Ensure Proxmox role is configured for PBS
+  assert:
+    that:
+      - proxmox_backup.pbs_enabled | bool
+    fail_msg: "PBS is not enabled in the Proxmox role configuration (proxmox_backup.pbs_enabled)"
+
+# Installation and Package Management
+# -----------------------------------------------------------------------------
+- name: Configure package repositories
+  ansible.builtin.import_tasks: repository.yml
+  tags: ["repository", "package"]
+
+- name: Manage PBS packages
+  ansible.builtin.import_tasks: package.yml
+  tags: ["package"]
+
+# Configuration
+# -----------------------------------------------------------------------------
+- name: Configure PBS interface
+  ansible.builtin.import_tasks: interface.yml
+  tags: ["interface", "ui"]
+
+- name: Configure PBS service
+  ansible.builtin.import_tasks: service.yml
+  tags: ["service"]
+
+# UI Configuration
+# -----------------------------------------------------------------------------
+- name: Configure UI settings
+  block:
+    - name: Remove subscription nag message
+      when: proxmox_backup.pbs.remove_subscription_nag | default(true)
+      block:
+        - name: Configure nag removal script
+          copy:
+            dest: /etc/apt/apt.conf.d/no-nag-script
+            content: |
+              DPkg::Post-Invoke { "dpkg -V proxmox-widget-toolkit | grep -q '/proxmoxlib\.js$'; if [ $? -eq 1 ]; then { echo 'Removing subscription nag from UI...'; sed -i '/data\.status.*{/{s/\!//;s/active/NoMoreNagging/}' /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js; }; fi"; };
+            mode: "0644"
+
+        - name: Reinstall proxmox-widget-toolkit to apply nag removal
+          apt:
+            name: proxmox-widget-toolkit
+            state: present
+            force: yes
+
+# Service Configuration
+# -----------------------------------------------------------------------------
+- name: Configure PBS service
+  block:
+    - name: Configure PBS MOTD
+      when: proxmox_backup.pbs.motd_enabled | default(true)
+      copy:
+        dest: /etc/motd
+        content: |
+          Welcome to Proxmox Backup Server!
+
+          Web interface: https://{{ ansible_default_ipv4.address }}:{{ proxmox_backup.pbs.web_interface_port }}
+          Documentation: https://pbs.proxmox.com/docs/
+
+          For support and updates, visit: https://www.proxmox.com/
+        mode: "0644"
+
+    - name: Ensure PBS service is enabled and started
+      systemd:
+        name: proxmox-backup
+        enabled: yes
+        state: started
+
+# Cleanup
+# -----------------------------------------------------------------------------
+- name: Clean package cache
+  apt:
+    autoclean: yes
+    autoremove: yes 

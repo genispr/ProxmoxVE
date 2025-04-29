@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# System Setup Tasks
+# =============================================================================
+# This file manages basic system configuration for Proxmox VE
+
+- name: Configure system settings
+  block:
+    - name: Configure hostname
+      ansible.builtin.hostname:
+        name: "{{ proxmox_hostname }}"
+      when: proxmox_hostname is defined
+
+    - name: Configure timezone
+      community.general.timezone:
+        name: "{{ proxmox_timezone }}"
+      when: proxmox_timezone is defined
+
+    - name: Configure locale settings
+      block:
+        - name: Generate locales
+          ansible.builtin.locale_gen:
+            name: "{{ item }}"
+            state: present
+          loop: "{{ proxmox_locales }}"
+
+        - name: Set default locale
+          ansible.builtin.command:
+            cmd: "update-locale LANG={{ proxmox_default_locale }}"
+          when: proxmox_default_locale is defined
+          changed_when: false
+
+    - name: Configure system logging
+      block:
+        - name: Configure rsyslog
+          ansible.builtin.template:
+            src: rsyslog.conf.j2
+            dest: /etc/rsyslog.conf
+            mode: "0644"
+          notify: restart rsyslog
+
+        - name: Configure logrotate
+          ansible.builtin.template:
+            src: logrotate.conf.j2
+            dest: /etc/logrotate.conf
+            mode: "0644"
+
+    - name: Configure system performance
+      block:
+        - name: Configure sysctl parameters
+          ansible.posix.sysctl:
+            name: "{{ item.key }}"
+            value: "{{ item.value }}"
+            state: present
+            sysctl_file: /etc/sysctl.d/99-proxmox.conf
+          loop: "{{ proxmox_sysctl | dict2items }}"
+          when: proxmox_sysctl is defined
+
+        - name: Configure limits
+          ansible.builtin.template:
+            src: limits.conf.j2
+            dest: /etc/security/limits.d/proxmox.conf
+            mode: "0644"
+          when: proxmox_limits is defined
+
+    - name: Configure storage optimization
+      block:
+        - name: Configure IO scheduler
+          ansible.builtin.template:
+            src: udev-io-scheduler.rules.j2
+            dest: /etc/udev/rules.d/60-io-scheduler.rules
+            mode: "0644"
+          notify: reload udev
+
+        - name: Configure disk parameters
+          ansible.builtin.template:
+            src: hdparm.conf.j2
+            dest: /etc/hdparm.conf
+            mode: "0644"
+          when: proxmox_disk_params is defined
+
+  tags: ["system", "setup"]

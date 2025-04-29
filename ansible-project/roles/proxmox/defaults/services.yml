@@ -1,0 +1,45 @@
+---
+# Service Management Configuration
+# -----------------------------------------------------------------------------
+managed_services:
+  # Core system services
+  - name: "sshd"
+    state: "started"
+    enabled: true
+  # Custom services can be added here with extended configuration
+  - name: "custom-service"
+    state: "started"
+    enabled: true
+    package: "custom-service"
+    config_template: "custom-service.conf.j2"
+    config_path: "/etc/custom-service/config"
+    user: "root"
+    group: "root"
+    dependencies: []
+    environment:
+      KEY: "value"
+
+  # PBS Service (when enabled)
+  - name: "proxmox-backup"
+    state: "started"
+    enabled: true
+    when: "proxmox_backup.pbs_enabled | bool"
+
+# Email Notification Configuration
+proxmox_email:
+  enabled: false
+  server: ""
+  port: 25
+  security: "none"
+  from_address: ""
+  to_address: ""
+
+# Monitoring Configuration
+proxmox_monitoring:
+  smart_enabled: true
+  smart_schedule: "weekly"
+  zfs_scrub_schedule: "monthly"
+  zfs_snapshot_schedule: "daily"
+  health_check_enabled: true
+  health_check_interval: "6h"
+  metrics_retention: "12M"

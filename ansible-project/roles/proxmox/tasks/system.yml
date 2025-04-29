@@ -1,0 +1,118 @@
+---
+# =============================================================================
+# System Configuration Tasks
+# =============================================================================
+
+# Basic System Settings
+# -----------------------------------------------------------------------------
+- name: Configure hostname
+  ansible.builtin.hostname:
+    name: "{{ proxmox_hostname }}"
+  when: proxmox_hostname is defined
+  tags: ["system", "hostname"]
+
+- name: Configure timezone
+  community.general.timezone:
+    name: "{{ proxmox_timezone }}"
+  when: proxmox_timezone is defined
+  tags: ["system", "timezone"]
+
+# Locale Configuration
+# -----------------------------------------------------------------------------
+- name: Configure locale settings
+  block:
+    - name: Generate locales
+      ansible.builtin.locale_gen:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ proxmox_locales }}"
+
+    - name: Set default locale
+      ansible.builtin.command:
+        cmd: "update-locale LANG={{ proxmox_default_locale }}"
+      when: proxmox_default_locale is defined
+      changed_when: false
+  tags: ["system", "locale"]
+
+# System Logging
+# -----------------------------------------------------------------------------
+- name: Configure system logging
+  block:
+    - name: Configure rsyslog
+      ansible.builtin.template:
+        src: rsyslog.conf.j2
+        dest: /etc/rsyslog.conf
+        mode: "0644"
+      notify: restart rsyslog
+
+    - name: Configure logrotate
+      ansible.builtin.template:
+        src: logrotate.conf.j2
+        dest: /etc/logrotate.conf
+        mode: "0644"
+  tags: ["system", "logging"]
+
+# System Performance
+# -----------------------------------------------------------------------------
+- name: Configure system performance
+  block:
+    - name: Configure sysctl parameters
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-proxmox.conf
+      loop: "{{ proxmox_sysctl | dict2items }}"
+      when: proxmox_sysctl is defined
+      notify: reload sysctl
+
+    - name: Configure system limits
+      ansible.builtin.template:
+        src: limits.conf.j2
+        dest: /etc/security/limits.d/proxmox.conf
+        mode: "0644"
+      when: proxmox_limits is defined
+  tags: ["system", "performance"]
+
+# Storage Optimization
+# -----------------------------------------------------------------------------
+- name: Configure storage optimization
+  block:
+    - name: Configure IO scheduler
+      ansible.builtin.template:
+        src: udev-io-scheduler.rules.j2
+        dest: /etc/udev/rules.d/60-io-scheduler.rules
+        mode: "0644"
+      notify: reload udev
+
+    - name: Configure disk parameters
+      ansible.builtin.template:
+        src: hdparm.conf.j2
+        dest: /etc/hdparm.conf
+        mode: "0644"
+      when: proxmox_disk_params is defined
+      notify: reload hdparm
+  tags: ["system", "storage"]
+
+# Time Synchronization
+# -----------------------------------------------------------------------------
+- name: Configure time synchronization
+  block:
+    - name: Install chrony
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+
+    - name: Configure chrony
+      ansible.builtin.template:
+        src: chrony.conf.j2
+        dest: /etc/chrony/chrony.conf
+        mode: "0644"
+      notify: restart chronyd
+
+    - name: Enable and start chrony
+      ansible.builtin.systemd:
+        name: chronyd
+        enabled: yes
+        state: started
+  tags: ["system", "time"]

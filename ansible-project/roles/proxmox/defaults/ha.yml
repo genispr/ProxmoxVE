@@ -1,0 +1,97 @@
+---
+# =============================================================================
+# High Availability Configuration Default Variables
+# =============================================================================
+
+# Basic HA Configuration
+# -----------------------------------------------------------------------------
+proxmox_ha:
+  enabled: false
+
+  # Resource Configuration
+  resources:
+    # Default settings for HA resources
+    defaults:
+      state: "started"
+      max_restart: 1
+      max_relocate: 1
+
+    # Resource groups
+    groups:
+      - name: "default"
+        restricted: false
+        nodes: []
+
+    # Resource types and their specific settings
+    types:
+      vm:
+        enabled: true
+        startup_delay: 0
+        shutdown_timeout: 180
+      ct:
+        enabled: true
+        startup_delay: 0
+        shutdown_timeout: 180
+
+  # Fencing Configuration
+  fencing:
+    enabled: true
+    timeout: 60
+    delay: 5
+
+  # Failover Configuration
+  failover:
+    auto_failback: true
+    failback_delay: 5
+    migration_timeout: 300
+
+  # Network Configuration
+  network:
+    allowed_networks: []
+    deny_networks: []
+    dedicated_network: false
+    interface: "eth0"
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    interval: 60
+    watchdog:
+      enabled: true
+      device: "/dev/watchdog"
+      timeout: 60
+
+  # Service Configuration
+  services:
+    pveproxy:
+      enabled: true
+      priority: 100
+    pvedaemon:
+      enabled: true
+      priority: 100
+    pve-cluster:
+      enabled: true
+      priority: 90
+    corosync:
+      enabled: true
+      priority: 90
+
+  # Recovery Configuration
+  recovery:
+    max_attempts: 3
+    retry_interval: 300
+    auto_restart: true
+
+  # Maintenance Mode
+  maintenance:
+    quorum_policy: "freeze" # freeze, ignore, or stop
+    relocate_policy: "ratio" # ratio or utilization
+
+  # Advanced Settings
+  advanced:
+    shutdown_policy: "freeze" # freeze, failover, or migrate
+    migration_type: "secure" # secure or insecure
+    crm_config:
+      stonith_enabled: true
+      stonith_timeout: 60
+      no_quorum_policy: "stop"

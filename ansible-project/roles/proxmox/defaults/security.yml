@@ -1,0 +1,104 @@
+---
+# =============================================================================
+# Security Default Variables
+# =============================================================================
+
+# System Security Configuration
+# -----------------------------------------------------------------------------
+proxmox_security:
+  # SSH Configuration
+  ssh:
+    port: 22
+    permit_root_login: "prohibit-password"
+    password_authentication: false
+    max_auth_tries: 3
+    allow_users: ["root"]
+    allow_groups: ["sudo"]
+    public_keys: []
+
+  # PAM Limits
+  limits:
+    nproc: 65535
+    nofile: 1048576
+    memlock: "unlimited"
+
+# Firewall Configuration
+# -----------------------------------------------------------------------------
+proxmox_firewall:
+  enabled: true
+  log_level: "nolog"
+  policy:
+    in: "DROP"
+    out: "ACCEPT"
+  rules:
+    - direction: "in"
+      action: "ACCEPT"
+      proto: "tcp"
+      dport: "22"
+      comment: "SSH access"
+    - direction: "in"
+      action: "ACCEPT"
+      proto: "tcp"
+      dport: "8006"
+      comment: "Web UI access"
+
+# Fail2ban Configuration
+# -----------------------------------------------------------------------------
+proxmox_fail2ban:
+  enabled: true
+  bantime: "24h"
+  findtime: "24h"
+  maxretry: 3
+  ignoreip: ["127.0.0.1/8"]
+  services:
+    - name: "sshd"
+      enabled: true
+      port: "ssh"
+      filter: "sshd"
+      logpath: "/var/log/auth.log"
+    - name: "proxmox"
+      enabled: true
+      port: "https,http,8006"
+      filter: "proxmox"
+      logpath: "/var/log/daemon.log"
+
+# SELinux Configuration
+# -----------------------------------------------------------------------------
+proxmox_selinux:
+  state: "disabled" # enforcing, permissive, or disabled
+  type: "targeted"
+  policy: "targeted"
+
+# Kernel Security Configuration
+# -----------------------------------------------------------------------------
+proxmox_kernel_security:
+  enable_module_loading: true
+  disable_modules: ["cramfs", "freevxfs", "jffs2", "hfs", "hfsplus", "udf"]
+  sysrq: 0
+  kexec_load_disabled: 1
+  keys:
+    maxkeys: 2000
+    maxbytes: 2000000
+
+# Authentication Configuration
+# -----------------------------------------------------------------------------
+proxmox_auth:
+  realm: "pam"
+  two_factor: false
+  token_lifetime: "28800"
+  max_attempts: 3
+  lockout_window: "1h"
+
+# Certificate Configuration
+# -----------------------------------------------------------------------------
+proxmox_certificates:
+  enabled: false
+  provider: "acme" # acme or custom
+  acme:
+    email: ""
+    server: "https://acme-v02.api.letsencrypt.org/directory"
+    challenge_type: "http"
+  custom:
+    cert_file: ""
+    key_file: ""
+    chain_file: ""

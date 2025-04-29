@@ -1,0 +1,72 @@
+---
+# =============================================================================
+# Cluster Configuration Main Tasks
+# =============================================================================
+
+- name: Ensure cluster configuration directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+  with_items:
+    - /etc/pve/nodes
+    - /etc/pve/ha
+    - /etc/corosync
+    - /etc/pve/firewall
+  when: cluster_config.enabled | default(false)
+  tags: ["cluster", "setup"]
+
+- name: Include cluster setup tasks
+  ansible.builtin.include_tasks: cluster/setup.yml
+  when: cluster_config.enabled | default(false)
+  tags: ["cluster", "setup"]
+
+- name: Include high availability tasks
+  ansible.builtin.include_tasks: cluster/ha.yml
+  when:
+    - cluster_config.enabled | default(false)
+    - cluster_config.ha.enabled | default(false)
+  tags: ["cluster", "ha"]
+
+- name: Include cluster network tasks
+  ansible.builtin.include_tasks: cluster/network.yml
+  when:
+    - cluster_config.enabled | default(false)
+    - cluster_config.network is defined
+  tags: ["cluster", "network"]
+
+# Cluster Verification
+- name: Verify cluster configuration
+  block:
+    - name: Check cluster status
+      ansible.builtin.command: pvecm status
+      register: cluster_check
+      changed_when: false
+      check_mode: no
+
+    - name: Check HA status
+      ansible.builtin.command: ha-manager status
+      register: ha_check
+      changed_when: false
+      check_mode: no
+      when: cluster_config.ha.enabled | default(false)
+
+    - name: Check corosync status
+      ansible.builtin.command: corosync-cfgtool -s
+      register: corosync_check
+      changed_when: false
+      check_mode: no
+  when: cluster_config.enabled | default(false)
+  tags: ["cluster", "verify"]
+
+# Cluster Maintenance
+- name: Configure cluster maintenance mode
+  ansible.builtin.command:
+    cmd: "ha-manager set maintenance {{ cluster_config.maintenance.mode }}"
+  when:
+    - cluster_config.enabled | default(false)
+    - cluster_config.maintenance is defined
+    - cluster_config.maintenance.mode is defined
+  tags: ["cluster", "maintenance"]

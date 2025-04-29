@@ -1,0 +1,157 @@
+---
+# =============================================================================
+# LXC Network Tasks
+# =============================================================================
+
+- name: Install network dependencies
+  ansible.builtin.apt:
+    name:
+      - iproute2
+      - bridge-utils
+      - net-tools
+      - iptables
+    state: present
+    update_cache: true
+  tags: ["lxc", "network", "dependencies"]
+
+- name: Configure LXC network interfaces
+  block:
+    - name: Validate network configuration
+      ansible.builtin.assert:
+        that:
+          - proxmox_lxc.network is defined
+          - proxmox_lxc.network.interfaces is defined
+          - proxmox_lxc.network.interfaces | length > 0
+        fail_msg: "LXC network configuration is not properly defined"
+        success_msg: "LXC network configuration validation passed"
+      tags: ["lxc", "network", "validation"]
+
+    - name: Verify bridge devices exist
+      ansible.builtin.command:
+        cmd: "ip link show {{ item.bridge | default(proxmox_lxc.network.default_bridge) }}"
+      register: bridge_check
+      failed_when: bridge_check.rc != 0
+      changed_when: false
+      loop: "{{ proxmox_lxc.network.interfaces }}"
+      tags: ["lxc", "network", "validation"]
+
+    - name: Configure network interfaces
+      community.general.proxmox_interface:
+        vmid: "{{ item.vmid }}"
+        name: "{{ item.name }}"
+        type: "{{ item.type | default('veth') }}"
+        bridge: "{{ item.bridge | default('vmbr0') }}"
+        firewall: "{{ item.firewall | default(true) }}"
+        rate: "{{ item.rate | default(omit) }}"
+        mtu: "{{ item.mtu | default(1500) }}"
+        tag: "{{ item.tag | default(omit) }}"
+        gateway: "{{ item.gateway | default(omit) }}"
+        ip: "{{ item.ip | default('dhcp') }}"
+        ip6: "{{ item.ip6 | default(omit) }}"
+        state: present
+      loop: "{{ proxmox_lxc.network.interfaces }}"
+      register: network_config
+      notify: reload network
+      tags: ["lxc", "network", "interfaces"]
+
+    - name: Log network interface changes
+      ansible.builtin.lineinfile:
+        path: /var/log/lxc-net.log
+        line: "{{ ansible_date_time.iso8601 }} - Network interface {{ item.item.name }} configured for container {{ item.item.vmid }}"
+        create: true
+        mode: "0644"
+      loop: "{{ network_config.results }}"
+      when: item.changed
+      tags: ["lxc", "network", "logging"]
+
+    - name: Configure network firewall
+      community.general.proxmox_firewall_rule:
+        vmid: "{{ item.0.vmid }}"
+        pos: "{{ item.1.pos | default(omit) }}"
+        action: "{{ item.1.action }}"
+        type: "{{ item.1.type | default('in') }}"
+        proto: "{{ item.1.proto | default('tcp') }}"
+        dport: "{{ item.1.dport | default(omit) }}"
+        sport: "{{ item.1.sport | default(omit) }}"
+        source: "{{ item.1.source | default(omit) }}"
+        dest: "{{ item.1.dest | default(omit) }}"
+        comment: "{{ item.1.comment | default(omit) }}"
+        enable: "{{ item.1.enable | default(true) }}"
+        log: "{{ item.1.log | default(false) }}"
+        state: present
+      loop: "{{ proxmox_lxc.network.interfaces | subelements('firewall_rules', skip_missing=True) }}"
+      register: firewall_config
+      when:
+        - item.0.firewall | default(true)
+        - item.1 is defined
+      tags: ["lxc", "network", "firewall"]
+
+    - name: Log firewall rule changes
+      ansible.builtin.lineinfile:
+        path: /var/log/proxmox-firewall.log
+        line: "{{ ansible_date_time.iso8601 }} - Firewall rule {{ item.item.1.comment | default('unnamed') }} configured for container {{ item.item.0.vmid }}"
+        create: true
+        mode: "0644"
+      loop: "{{ firewall_config.results }}"
+      when: item.changed
+      tags: ["lxc", "network", "logging"]
+
+    - name: Configure DNS settings
+      community.general.proxmox_container:
+        vmid: "{{ item.vmid }}"
+        nameserver: "{{ item.nameserver | default(proxmox_lxc.defaults.nameserver) }}"
+        searchdomain: "{{ item.searchdomain | default(proxmox_lxc.defaults.searchdomain) }}"
+        state: present
+      loop: "{{ proxmox_lxc.network.interfaces }}"
+      register: dns_config
+      tags: ["lxc", "network", "dns"]
+
+    - name: Configure network resource limits
+      community.general.proxmox_container:
+        vmid: "{{ item.vmid }}"
+        netif: "{{ item.netif | default({}) }}"
+        state: present
+      loop: "{{ proxmox_lxc.network.interfaces }}"
+      when:
+        - item.netif is defined
+      register: resource_config
+      tags: ["lxc", "network", "resources"]
+
+    - name: Configure network monitoring
+      when: proxmox_monitoring.enabled | default(false)
+      block:
+        - name: Enable network monitoring
+          ansible.builtin.lineinfile:
+            path: "/etc/default/prometheus-node-exporter"
+            line: 'ARGS="--collector.netdev --collector.netstat"'
+            regexp: "^ARGS="
+            create: true
+          notify: restart prometheus-node-exporter
+
+        - name: Configure network metrics retention
+          ansible.builtin.lineinfile:
+            path: "/etc/prometheus/prometheus.yml"
+            insertafter: "scrape_configs:"
+            line: |
+              - job_name: 'lxc_network'
+                static_configs:
+                  - targets: ['localhost:9100']
+                    labels:
+                      instance: "{{ inventory_hostname }}"
+            create: true
+          notify: reload prometheus
+      tags: ["lxc", "network", "monitoring"]
+
+  rescue:
+    - name: Log network configuration failures
+      ansible.builtin.lineinfile:
+        path: /var/log/lxc-net.log
+        line: "{{ ansible_date_time.iso8601 }} - ERROR: Network configuration failed - {{ ansible_failed_result.msg | default('Unknown error') }}"
+        create: true
+        mode: "0644"
+      tags: ["lxc", "network", "logging"]
+
+    - name: Fail with error message
+      ansible.builtin.fail:
+        msg: "Network configuration failed. Check /var/log/lxc-net.log for details."
+  tags: ["lxc", "network"]

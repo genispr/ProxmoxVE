@@ -1,0 +1,21 @@
+---
+# =============================================================================
+# Post-configuration Tasks
+# =============================================================================
+
+- name: Import cleanup tasks
+  ansible.builtin.import_tasks: cleanup.yml
+  tags: ["post-config", "cleanup"]
+
+- name: Import verification tasks
+  ansible.builtin.import_tasks: verify.yml
+  tags: ["post-config", "verify"]
+
+- name: Import notification tasks
+  ansible.builtin.import_tasks: notify.yml
+  tags: ["post-config", "notify"]
+  when: proxmox_email.enabled | bool
+
+- name: Import documentation tasks
+  ansible.builtin.import_tasks: docs.yml
+  tags: ["post-config", "docs"] 

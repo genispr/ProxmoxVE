@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# PBS Repository Configuration
+# =============================================================================
+
+- name: Add PBS repository key
+  ansible.builtin.apt_key:
+    url: "https://enterprise.proxmox.com/debian/proxmox-release-{{ ansible_distribution_release }}.gpg"
+    state: present
+  when: proxmox_backup.pbs.enterprise_repo | default(false)
+
+- name: Configure PBS enterprise repository
+  ansible.builtin.apt_repository:
+    repo: "deb https://enterprise.proxmox.com/debian/pbs {{ ansible_distribution_release }} pbs-enterprise"
+    state: "{{ 'present' if proxmox_backup.pbs.enterprise_repo | default(false) else 'absent' }}"
+    filename: proxmox-pbs-enterprise
+    update_cache: true
+
+- name: Configure PBS no-subscription repository
+  ansible.builtin.apt_repository:
+    repo: "deb http://download.proxmox.com/debian/pbs {{ ansible_distribution_release }} pbs-no-subscription"
+    state: "{{ 'absent' if proxmox_backup.pbs.enterprise_repo | default(false) else 'present' }}"
+    filename: proxmox-pbs-no-subscription
+    update_cache: true

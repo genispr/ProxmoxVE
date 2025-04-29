@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# Power Management Main Tasks
+# =============================================================================
+
+- name: Ensure power management directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  with_items:
+    - /etc/acpi/events
+    - /etc/acpi/actions
+    - /etc/thermald
+    - /etc/sysfs.d
+  tags: ["power", "setup"]
+
+- name: Include ACPI configuration tasks
+  ansible.builtin.include_tasks: power/acpi.yml
+  when: power_config.acpi.enabled | default(true)
+  tags: ["power", "acpi"]
+
+- name: Include CPU power management tasks
+  ansible.builtin.include_tasks: power/cpu.yml
+  when: power_config.cpu.enabled | default(true)
+  tags: ["power", "cpu"]
+
+- name: Include thermal management tasks
+  ansible.builtin.include_tasks: power/thermal.yml
+  when: power_config.thermal.enabled | default(true)
+  tags: ["power", "thermal"]
+
+# UPS Configuration
+- name: Configure UPS support
+  block:
+    - name: Install UPS packages
+      ansible.builtin.apt:
+        name:
+          - nut
+          - nut-client
+        state: present
+      when: power_config.ups.enabled | default(false)
+
+    - name: Configure NUT UPS daemon
+      ansible.builtin.template:
+        src: power/ups.conf.j2
+        dest: /etc/nut/ups.conf
+        mode: "0640"
+        group: nut
+      notify: restart nut-server
+      when: power_config.ups.config is defined
+
+    - name: Configure UPS monitoring
+      ansible.builtin.template:
+        src: power/upsmon.conf.j2
+        dest: /etc/nut/upsmon.conf
+        mode: "0640"
+        group: nut
+      notify: restart nut-client
+      when: power_config.ups.monitoring is defined
+  when: power_config.ups.enabled | default(false)
+  tags: ["power", "ups"]
+
+# Power Profiles
+- name: Configure power profiles
+  block:
+    - name: Install power profiles daemon
+      ansible.builtin.apt:
+        name: power-profiles-daemon
+        state: present
+      when: power_config.profiles.enabled | default(false)
+
+    - name: Configure power profiles
+      ansible.builtin.template:
+        src: power/power-profiles.j2
+        dest: /etc/power-profiles-daemon/config.d/proxmox.conf
+        mode: "0644"
+      notify: reload power management
+      when: power_config.profiles.config is defined
+  when: power_config.profiles.enabled | default(false)
+  tags: ["power", "profiles"]

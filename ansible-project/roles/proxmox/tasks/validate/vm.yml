@@ -1,0 +1,107 @@
+---
+# =============================================================================
+# VM Configuration Validation Tasks
+# =============================================================================
+
+- name: Validate VM CPU configuration
+  ansible.builtin.assert:
+    that:
+      - item.cores | int > 0
+      - item.sockets | int > 0
+      - item.vcpus | int >= (item.cores | int * item.sockets | int)
+      - item.type in ['host', 'kvm64', 'qemu64'] or item.type is match('^custom-.*$')
+    fail_msg: |
+      Invalid CPU configuration for VM {{ item.vmid }}:
+      - Cores must be greater than 0 (got {{ item.cores }})
+      - Sockets must be greater than 0 (got {{ item.sockets }})
+      - vCPUs must be >= cores * sockets (got {{ item.vcpus }})
+      - CPU type must be valid (got {{ item.type }})
+    success_msg: "CPU configuration for VM {{ item.vmid }} is valid"
+  loop: "{{ proxmox_vm.cpu }}"
+  when: proxmox_vm.cpu is defined
+  register: cpu_validation
+  ignore_errors: true
+  tags: ["validate", "vm", "cpu"]
+
+- name: Validate VM memory configuration
+  ansible.builtin.assert:
+    that:
+      - item.size | int > 0
+      - item.balloon | int <= item.size | int
+      - item.shares | int > 0
+      - item.hugepages in ['none', '2', '1024'] or item.hugepages is match('^[0-9]+[MG]B$')
+      - item.swap | int >= 0
+    fail_msg: |
+      Invalid memory configuration for VM {{ item.vmid }}:
+      - Memory size must be greater than 0 (got {{ item.size }})
+      - Balloon size must be <= memory size (got {{ item.balloon }})
+      - Memory shares must be greater than 0 (got {{ item.shares }})
+      - Invalid hugepages value (got {{ item.hugepages }})
+      - Swap must be >= 0 (got {{ item.swap }})
+    success_msg: "Memory configuration for VM {{ item.vmid }} is valid"
+  loop: "{{ proxmox_vm.memory }}"
+  when: proxmox_vm.memory is defined
+  register: memory_validation
+  ignore_errors: true
+  tags: ["validate", "vm", "memory"]
+
+- name: Validate VM resource limits
+  ansible.builtin.assert:
+    that:
+      - item.cpu | int >= 0
+      - item.cpuunits | int > 0 and item.cpuunits | int <= 500000
+      - item.io_thread | type_debug == 'bool'
+    fail_msg: |
+      Invalid resource limits for VM {{ item.vmid }}:
+      - CPU limit must be >= 0 (got {{ item.cpu }})
+      - CPU units must be between 1 and 500000 (got {{ item.cpuunits }})
+      - IO thread must be boolean (got {{ item.io_thread }})
+    success_msg: "Resource limits for VM {{ item.vmid }} are valid"
+  loop: "{{ proxmox_vm.limits }}"
+  when: proxmox_vm.limits is defined
+  register: limits_validation
+  ignore_errors: true
+  tags: ["validate", "vm", "limits"]
+
+- name: Validate VM monitoring configuration
+  ansible.builtin.assert:
+    that:
+      - item.agent | type_debug == 'bool'
+      - item.freeze | type_debug == 'bool'
+    fail_msg: |
+      Invalid monitoring configuration for VM {{ item.vmid }}:
+      - Agent must be boolean (got {{ item.agent }})
+      - Freeze must be boolean (got {{ item.freeze }})
+    success_msg: "Monitoring configuration for VM {{ item.vmid }} is valid"
+  loop: "{{ proxmox_vm.monitoring }}"
+  when: proxmox_vm.monitoring is defined
+  register: monitoring_validation
+  ignore_errors: true
+  tags: ["validate", "vm", "monitoring"]
+
+- name: Check for validation failures
+  ansible.builtin.fail:
+    msg: |
+      Configuration validation failed:
+      {% if cpu_validation.failed %}
+      CPU Validation Errors:
+      {{ cpu_validation.msg }}
+      {% endif %}
+      {% if memory_validation.failed %}
+      Memory Validation Errors:
+      {{ memory_validation.msg }}
+      {% endif %}
+      {% if limits_validation.failed %}
+      Resource Limits Validation Errors:
+      {{ limits_validation.msg }}
+      {% endif %}
+      {% if monitoring_validation.failed %}
+      Monitoring Validation Errors:
+      {{ monitoring_validation.msg }}
+      {% endif %}
+  when: >
+    cpu_validation.failed or
+    memory_validation.failed or
+    limits_validation.failed or
+    monitoring_validation.failed
+  tags: ["validate", "vm"]

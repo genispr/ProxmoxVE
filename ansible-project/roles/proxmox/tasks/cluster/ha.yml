@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# High Availability Configuration Tasks
+# =============================================================================
+
+- name: Configure HA groups
+  ansible.builtin.command:
+    cmd: "ha-manager groupadd {{ item.name }} {{ item.nodes | join(' ') }}"
+  loop: "{{ cluster_config.ha.groups | default([]) }}"
+  when:
+    - cluster_config.ha.enabled | default(false)
+    - cluster_config.ha.groups is defined
+  tags: ["cluster", "ha"]
+
+- name: Configure HA resources
+  block:
+    - name: Add VM resources
+      ansible.builtin.command:
+        cmd: "ha-manager add vm:{{ item.vmid }} --group {{ item.group }}"
+      loop: "{{ cluster_config.ha.vms | default([]) }}"
+      when: cluster_config.ha.vms is defined
+
+    - name: Add container resources
+      ansible.builtin.command:
+        cmd: "ha-manager add ct:{{ item.ctid }} --group {{ item.group }}"
+      loop: "{{ cluster_config.ha.containers | default([]) }}"
+      when: cluster_config.ha.containers is defined
+  when: cluster_config.ha.enabled | default(false)
+  tags: ["cluster", "ha"]
+
+- name: Configure HA fencing
+  ansible.builtin.template:
+    src: cluster/ha-fencing.j2
+    dest: /etc/pve/ha/fence.cfg
+    mode: "0644"
+  when:
+    - cluster_config.ha.enabled | default(false)
+    - cluster_config.ha.fencing is defined
+  notify: restart pve-ha-manager
+  tags: ["cluster", "ha"]
+
+- name: Configure HA settings
+  ansible.builtin.template:
+    src: cluster/ha-manager.j2
+    dest: /etc/pve/ha/manager.cfg
+    mode: "0644"
+  when:
+    - cluster_config.ha.enabled | default(false)
+    - cluster_config.ha.settings is defined
+  notify: restart pve-ha-manager
+  tags: ["cluster", "ha"]

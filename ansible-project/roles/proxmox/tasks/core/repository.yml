@@ -1,0 +1,127 @@
+---
+# =============================================================================
+# Repository Management Tasks
+# =============================================================================
+# This file manages all package repositories and sources for Proxmox ecosystem
+
+- name: Configure Debian sources
+  block:
+    - name: Configure main Debian repository
+      ansible.builtin.template:
+        src: sources.list.j2
+        dest: /etc/apt/sources.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+
+    - name: Configure non-free firmware warning
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/no-bookworm-firmware.conf
+        content: 'APT::Get::Update::SourceListWarnings::NonFreeFirmware "false";'
+        mode: "0644"
+  tags: ["repository", "debian"]
+
+- name: Configure Proxmox VE repositories
+  block:
+    - name: Configure PVE enterprise repository
+      ansible.builtin.template:
+        src: pve-enterprise.list.j2
+        dest: /etc/apt/sources.list.d/pve-enterprise.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: proxmox_repositories.pve.enterprise | bool
+
+    - name: Configure PVE no-subscription repository
+      ansible.builtin.template:
+        src: pve-no-subscription.list.j2
+        dest: /etc/apt/sources.list.d/pve-no-subscription.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: not proxmox_repositories.pve.enterprise | bool
+
+    - name: Configure PVE test repository
+      ansible.builtin.template:
+        src: pve-test.list.j2
+        dest: /etc/apt/sources.list.d/pve-test.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: proxmox_repositories.pve.test | bool
+  tags: ["repository", "pve"]
+
+- name: Configure Proxmox Backup Server repositories
+  when: proxmox_backup.pbs_enabled | bool
+  block:
+    - name: Configure PBS enterprise repository
+      ansible.builtin.template:
+        src: pbs-enterprise.list.j2
+        dest: /etc/apt/sources.list.d/pbs-enterprise.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: proxmox_repositories.pbs.enterprise | bool
+
+    - name: Configure PBS no-subscription repository
+      ansible.builtin.template:
+        src: pbs-no-subscription.list.j2
+        dest: /etc/apt/sources.list.d/pbs-no-subscription.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: not proxmox_repositories.pbs.enterprise | bool
+
+    - name: Configure PBS test repository
+      ansible.builtin.template:
+        src: pbs-test.list.j2
+        dest: /etc/apt/sources.list.d/pbs-test.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: proxmox_repositories.pbs.test | bool
+  tags: ["repository", "pbs"]
+
+- name: Configure Ceph repositories
+  when: proxmox_storage.ceph.enabled | bool
+  block:
+    - name: Configure Ceph enterprise repository
+      ansible.builtin.template:
+        src: ceph-enterprise.list.j2
+        dest: /etc/apt/sources.list.d/ceph-enterprise.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: proxmox_repositories.ceph.enterprise | bool
+
+    - name: Configure Ceph no-subscription repository
+      ansible.builtin.template:
+        src: ceph-no-subscription.list.j2
+        dest: /etc/apt/sources.list.d/ceph-no-subscription.list
+        mode: "0644"
+        backup: true
+      notify: update_cache
+      when: not proxmox_repositories.ceph.enterprise | bool
+  tags: ["repository", "ceph"]
+
+- name: Configure repository keys
+  block:
+    - name: Add Proxmox VE repository key
+      ansible.builtin.apt_key:
+        url: https://enterprise.proxmox.com/debian/proxmox-release-bullseye.gpg
+        state: present
+      when: proxmox_repositories.pve.enterprise | bool
+
+    - name: Add PBS repository key
+      ansible.builtin.apt_key:
+        url: https://enterprise.proxmox.com/debian/proxmox-release-bullseye.gpg
+        state: present
+      when: proxmox_repositories.pbs.enterprise | bool and proxmox_backup.pbs_enabled | bool
+  tags: ["repository", "keys"]
+
+- name: Update package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  changed_when: false
+  tags: ["repository", "update"]

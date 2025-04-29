@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# LXC Container Tasks
+# =============================================================================
+
+- name: Import LXC template tasks
+  ansible.builtin.import_tasks: templates.yml
+  tags: ["lxc", "templates"]
+
+- name: Import LXC configuration tasks
+  ansible.builtin.import_tasks: config.yml
+  tags: ["lxc", "config"]
+
+- name: Import LXC networking tasks
+  ansible.builtin.import_tasks: network.yml
+  tags: ["lxc", "network"]
+
+- name: Import LXC storage tasks
+  ansible.builtin.import_tasks: storage.yml
+  tags: ["lxc", "storage"]
+
+- name: Import LXC resource tasks
+  ansible.builtin.import_tasks: resources.yml
+  tags: ["lxc", "resources"]
+
+- name: Import LXC feature tasks
+  ansible.builtin.import_tasks: features.yml
+  tags: ["lxc", "features"]
+
+- name: Import LXC IP tagging tasks
+  ansible.builtin.import_tasks: ip-tagging.yml
+  tags: ["lxc", "ip-tagging"]
+  when: proxmox_lxc.ip_tagging.enabled | bool 

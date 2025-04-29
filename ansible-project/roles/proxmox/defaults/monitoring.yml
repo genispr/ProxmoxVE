@@ -1,0 +1,122 @@
+---
+# =============================================================================
+# Monitoring Default Variables
+# =============================================================================
+
+# System Monitoring Configuration
+# -----------------------------------------------------------------------------
+proxmox_monitoring:
+  enabled: true
+  collectd: true
+
+  # System Metrics
+  system:
+    enabled: true
+    interval: 60
+    retention: "30d"
+    metrics:
+      - cpu
+      - memory
+      - disk
+      - network
+      - process
+      - system
+
+  # Service Monitoring
+  services:
+    enabled: true
+    interval: 300
+    check_list:
+      - pveproxy
+      - pvedaemon
+      - pve-cluster
+      - corosync
+      - sshd
+      - nginx
+
+  # Resource Monitoring
+  resources:
+    enabled: true
+    interval: 60
+    thresholds:
+      cpu_usage: 80
+      memory_usage: 85
+      disk_usage: 90
+      inode_usage: 90
+
+  # Performance Monitoring
+  performance:
+    enabled: true
+    interval: 300
+    metrics:
+      - io_stats
+      - tcp_stats
+      - vm_stats
+      - zfs_stats
+
+  # SMART Monitoring
+  smart:
+    enabled: true
+    schedule: "weekly"
+    attributes:
+      - reallocated_sector_ct
+      - spin_retry_count
+      - command_timeout
+      - current_pending_sector
+      - offline_uncorrectable
+      - raw_read_error_rate
+
+  # ZFS Monitoring
+  zfs:
+    enabled: true
+    scrub_schedule: "monthly"
+    snapshot_schedule: "daily"
+    metrics:
+      - pool_health
+      - pool_capacity
+      - arc_stats
+      - io_stats
+
+  # Health Checks
+  health_check:
+    enabled: true
+    interval: "6h"
+    checks:
+      - disk_health
+      - raid_health
+      - service_health
+      - network_health
+      - cluster_health
+      - backup_health
+
+  # Metrics Configuration
+  metrics:
+    retention: "12M"
+    scrape_interval: "15s"
+    evaluation_interval: "15s"
+    storage:
+      tsdb_retention: "15d"
+      tsdb_block_duration: "2h"
+
+  # Alert Configuration
+  alerts:
+    enabled: true
+    handlers:
+      - email
+      - webhook
+    rules:
+      high_cpu:
+        threshold: 90
+        duration: "5m"
+        severity: warning
+      high_memory:
+        threshold: 85
+        duration: "5m"
+        severity: warning
+      disk_full:
+        threshold: 90
+        duration: "5m"
+        severity: critical
+      service_down:
+        duration: "5m"
+        severity: critical

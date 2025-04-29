@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# Network Interface Configuration Tasks
+# =============================================================================
+
+- name: Configure physical interfaces
+  ansible.builtin.template:
+    src: network/interfaces.j2
+    dest: /etc/network/interfaces
+    mode: "0644"
+    backup: yes
+  notify: restart networking
+  when: network_config.interfaces is defined
+  tags: ["network", "interfaces"]
+
+- name: Configure network bridges
+  ansible.builtin.template:
+    src: network/bridges.j2
+    dest: /etc/network/interfaces.d/bridges
+    mode: "0644"
+  notify: restart networking
+  when: network_config.bridges is defined
+  tags: ["network", "interfaces"]
+
+- name: Apply interface settings
+  ansible.builtin.command:
+    cmd: "ifdown {{ item }} && ifup {{ item }}"
+  loop: "{{ network_config.interfaces | default([]) }}"
+  when: network_config.interfaces is defined
+  notify: restart networking
+  tags: ["network", "interfaces"]

@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# Firewall Configuration Tasks
+# =============================================================================
+
+- name: Configure cluster firewall
+  ansible.builtin.template:
+    src: firewall/cluster.fw.j2
+    dest: /etc/pve/firewall/cluster.fw
+    mode: "0644"
+  notify: reload firewall
+  when: proxmox_firewall.cluster is defined
+  tags: ["network", "firewall"]
+
+- name: Configure node firewall
+  ansible.builtin.template:
+    src: firewall/nodes.fw.j2
+    dest: "/etc/pve/nodes/{{ inventory_hostname }}/host.fw"
+    mode: "0644"
+  notify: reload firewall
+  when: proxmox_firewall.node is defined
+  tags: ["network", "firewall"]
+
+- name: Configure VM firewalls
+  ansible.builtin.template:
+    src: firewall/vm.fw.j2
+    dest: "/etc/pve/firewall/{{ item.vmid }}.fw"
+    mode: "0644"
+  loop: "{{ proxmox_firewall.vms | default([]) }}"
+  notify: reload firewall
+  when: proxmox_firewall.vms is defined
+  tags: ["network", "firewall"]
+
+- name: Ensure firewall is enabled and started
+  ansible.builtin.service:
+    name: pve-firewall
+    state: started
+    enabled: yes
+  tags: ["network", "firewall"]

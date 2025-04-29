@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Proxmox Backup Server Test Repository
+# Last modified: {{ ansible_date_time.iso8601 }}
+#
+# Note: This repository contains test updates that are not yet ready for production.
+# Warning: Test packages may be unstable and could potentially break your system.
+# Use with caution in development/testing environments only.
+# For more information, visit: https://www.proxmox.com/en/proxmox-backup-server/pricing
+
+{% if proxmox_repositories.pbs.test %}
+deb http://download.proxmox.com/debian/pbs {{ proxmox_repositories.pbs.version }} pbstest
+{% else %}
+# Repository disabled: Test repository not enabled.
+# To enable, set proxmox_repositories.pbs.test to true.
+# deb http://download.proxmox.com/debian/pbs {{ proxmox_repositories.pbs.version }} pbstest
+{% endif %} 

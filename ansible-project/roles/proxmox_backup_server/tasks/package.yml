@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# PBS Package Management Tasks
+# =============================================================================
+
+- name: Install PBS dependencies
+  apt:
+    name: "{{ proxmox_backup.pbs.dependencies }}"
+    state: present
+
+- name: Install Proxmox Backup Server
+  apt:
+    name: proxmox-backup-server
+    state: present
+
+- name: Clean package cache
+  apt:
+    autoclean: yes
+    autoremove: yes

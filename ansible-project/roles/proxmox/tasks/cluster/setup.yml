@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# Cluster Setup Tasks
+# =============================================================================
+
+- name: Install cluster packages
+  ansible.builtin.apt:
+    name:
+      - corosync
+      - pve-cluster
+      - pve-ha-manager
+    state: present
+  when: cluster_config.enabled | default(false)
+  tags: ["cluster", "setup"]
+
+- name: Configure cluster name
+  ansible.builtin.lineinfile:
+    path: /etc/pve/corosync.conf
+    regexp: "^\\s*cluster_name:"
+    line: "    cluster_name: {{ cluster_config.name }}"
+    create: yes
+  when:
+    - cluster_config.enabled | default(false)
+    - cluster_config.name is defined
+  notify: reload corosync
+  tags: ["cluster", "setup"]
+
+- name: Create cluster
+  ansible.builtin.command:
+    cmd: "pvecm create {{ cluster_config.name }}"
+    creates: /etc/corosync/authkey
+  when:
+    - cluster_config.enabled | default(false)
+    - cluster_config.create | default(false)
+    - inventory_hostname == cluster_config.primary_node
+  tags: ["cluster", "setup"]
+
+- name: Get cluster join information
+  ansible.builtin.command:
+    cmd: pvecm status
+  register: cluster_status
+  changed_when: false
+  when: cluster_config.enabled | default(false)
+  tags: ["cluster", "setup"]
+
+- name: Join existing cluster
+  ansible.builtin.command:
+    cmd: "pvecm add {{ cluster_config.primary_node }} -force 1"
+  when:
+    - cluster_config.enabled | default(false)
+    - inventory_hostname != cluster_config.primary_node
+    - "'not a cluster member' in cluster_status.stdout"
+  tags: ["cluster", "setup"]

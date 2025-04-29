@@ -1,0 +1,74 @@
+---
+# =============================================================================
+# Firmware Management Tasks
+# =============================================================================
+
+# Environment Detection
+# -----------------------------------------------------------------------------
+- name: Check virtualization status
+  ansible.builtin.command: systemd-detect-virt
+  register: virt_check
+  changed_when: false
+  check_mode: false
+  tags: ["firmware", "detect"]
+
+- name: Get CPU information
+  ansible.builtin.command: lscpu
+  register: cpu_info
+  changed_when: false
+  check_mode: false
+  tags: ["firmware", "detect"]
+
+- name: Set CPU vendor fact
+  ansible.builtin.set_fact:
+    cpu_vendor: "{{ 'intel' if 'GenuineIntel' in cpu_info.stdout else ('amd' if 'AuthenticAMD' in cpu_info.stdout else 'unknown') }}"
+  tags: ["firmware", "detect"]
+
+# Microcode Management
+# -----------------------------------------------------------------------------
+- name: Install Intel microcode
+  when:
+    - cpu_vendor == 'intel'
+    - virt_check.stdout == 'none'
+  block:
+    - name: Install Intel microcode packages
+      ansible.builtin.apt:
+        name:
+          - iucode-tool
+          - intel-microcode
+        state: latest
+        update_cache: true
+      notify: reboot_required
+  tags: ["firmware", "microcode", "intel"]
+
+- name: Install AMD microcode
+  when:
+    - cpu_vendor == 'amd'
+    - virt_check.stdout == 'none'
+  ansible.builtin.apt:
+    name: amd64-microcode
+    state: latest
+    update_cache: true
+  notify: reboot_required
+  tags: ["firmware", "microcode", "amd"]
+
+# Firmware Updates
+# -----------------------------------------------------------------------------
+- name: Install firmware update tools
+  when: virt_check.stdout == 'none'
+  ansible.builtin.apt:
+    name:
+      - fwupd
+      - firmware-linux
+      - firmware-linux-nonfree
+    state: latest
+    update_cache: true
+  tags: ["firmware", "updates"]
+
+- name: Enable firmware update service
+  when: virt_check.stdout == 'none'
+  ansible.builtin.systemd:
+    name: fwupd
+    enabled: yes
+    state: started
+  tags: ["firmware", "updates"]

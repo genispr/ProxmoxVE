@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# Security Configuration Main Tasks
+# =============================================================================
+
+- name: Ensure security configuration directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+  with_items:
+    - /etc/sysctl.d
+    - /etc/apparmor.d
+    - /etc/audit/rules.d
+    - /etc/security
+  tags: ["security", "setup"]
+
+- name: Include system hardening tasks
+  ansible.builtin.include_tasks: security/hardening.yml
+  tags: ["security", "hardening"]
+
+- name: Include SSH security tasks
+  ansible.builtin.include_tasks: security/ssh.yml
+  tags: ["security", "ssh"]
+
+- name: Include AppArmor configuration tasks
+  ansible.builtin.include_tasks: security/apparmor.yml
+  when: security_config.apparmor.enabled | default(false)
+  tags: ["security", "apparmor"]
+
+- name: Include security auditing tasks
+  ansible.builtin.include_tasks: security/audit.yml
+  when: security_config.audit.enabled | default(false)
+  tags: ["security", "audit"]
+
+# Verification Tasks
+- name: Check security configuration
+  block:
+    - name: Check sysctl parameters
+      ansible.builtin.command: sysctl -a
+      register: sysctl_check
+      changed_when: false
+      check_mode: no
+
+    - name: Verify AppArmor profile syntax
+      ansible.builtin.command: apparmor_parser -Q /etc/apparmor.d/usr.sbin.proxmox
+      changed_when: false
+      check_mode: no
+      when: security_config.apparmor.enabled | default(false)
+  tags: ["security", "verify"]

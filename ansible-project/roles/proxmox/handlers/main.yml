@@ -1,34 +1,150 @@
 ---
 # =============================================================================
-# Proxmox Role Handlers
+# Proxmox VE Role Handlers
 # =============================================================================
 
 # System Handlers
 # -----------------------------------------------------------------------------
+- name: update grub
+  command: update-grub
+  changed_when: true
+
+- name: reload modules
+  command: modprobe -r && modprobe -a
+  changed_when: true
+
+- name: reload sysctl
+  command: sysctl --system
+  changed_when: true
+
 - name: reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
+  systemd:
+    daemon_reload: yes
 
-- name: restart systemd-timesyncd
-  ansible.builtin.systemd:
-    name: systemd-timesyncd
+- name: reload udev
+  command: udevadm control --reload-rules && udevadm trigger
+  changed_when: true
+
+- name: restart rsyslog
+  systemd:
+    name: rsyslog
     state: restarted
 
-- name: restart log2ram
-  ansible.builtin.systemd:
-    name: log2ram
+- name: restart chronyd
+  systemd:
+    name: chronyd
     state: restarted
-    daemon_reload: true
+
+# Service Handlers
+# -----------------------------------------------------------------------------
+- name: restart thermald
+  systemd:
+    name: thermald
+    state: restarted
+
+- name: restart fancontrol
+  systemd:
+    name: fancontrol
+    state: restarted
+
+- name: restart acpid
+  systemd:
+    name: acpid
+    state: restarted
+
+- name: restart nut-server
+  systemd:
+    name: nut-server
+    state: restarted
+
+- name: restart nut-client
+  systemd:
+    name: nut-client
+    state: restarted
+
+- name: reload hdparm
+  command: hdparm -S /etc/hdparm.conf
+  changed_when: true
 
 # Network Handlers
 # -----------------------------------------------------------------------------
 - name: restart networking
-  ansible.builtin.service:
+  service:
     name: networking
     state: restarted
 
 - name: reload firewall
-  ansible.builtin.command: pve-firewall reload
+  command: pve-firewall restart
+  changed_when: true
+
+# Storage Handlers
+# -----------------------------------------------------------------------------
+- name: reload storage
+  command: pvesm reload
+  changed_when: true
+
+# Cluster Handlers
+# -----------------------------------------------------------------------------
+- name: reload corosync
+  service:
+    name: corosync
+    state: reloaded
+
+- name: restart pve-cluster
+  service:
+    name: pve-cluster
+    state: restarted
+
+# System Reboot Handler
+# -----------------------------------------------------------------------------
+- name: reboot_required
+  ansible.builtin.reboot:
+    msg: "Rebooting due to system configuration changes"
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    test_command: uptime
+
+# Network Handlers
+# -----------------------------------------------------------------------------
+- name: restart network interfaces
+  ansible.builtin.command: "ifdown {{ item }} && ifup {{ item }}"
+  loop: "{{ network_interfaces | default([]) }}"
+  listen: restart network interfaces
+
+- name: restart network monitoring
+  block:
+    - name: Restart Prometheus Node Exporter
+      ansible.builtin.systemd:
+        name: prometheus-node-exporter
+        state: restarted
+      when: proxmox_monitoring.enabled | default(false)
+    - name: Reload Prometheus configuration
+      ansible.builtin.systemd:
+        name: prometheus
+        state: reloaded
+      when: proxmox_monitoring.enabled | default(false)
+  listen: restart network monitoring
+
+- name: update network logging
+  block:
+    - name: Ensure log directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /var/log/proxmox/network
+        - /var/log/proxmox/firewall
+    - name: Configure log rotation
+      ansible.builtin.template:
+        src: network-logs.conf.j2
+        dest: /etc/logrotate.d/proxmox-network
+        mode: "0644"
+    - name: Restart rsyslog
+      ansible.builtin.systemd:
+        name: rsyslog
+        state: restarted
+  listen: update network logging
 
 # Service Handlers
 # -----------------------------------------------------------------------------
@@ -44,6 +160,16 @@
     state: reloaded
   when: service_name is defined
 
+- name: restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+
+- name: restart smartd
+  ansible.builtin.systemd:
+    name: smartd
+    state: restarted
+
 # Proxmox Specific Handlers
 # -----------------------------------------------------------------------------
 - name: restart pveproxy
@@ -56,15 +182,31 @@
     name: pvedaemon
     state: restarted
 
-- name: restart pve-cluster
-  ansible.builtin.systemd:
-    name: pve-cluster
-    state: restarted
-
 - name: restart pve-firewall
   ansible.builtin.systemd:
     name: pve-firewall
     state: restarted
+
+# Power Management Handlers
+# -----------------------------------------------------------------------------
+- name: reload power management
+  ansible.builtin.command: systemctl restart power-profiles-daemon.service
+  failed_when: false  # Service might not exist on all systems
+
+# Package Management Handlers
+# -----------------------------------------------------------------------------
+- name: update_cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    autoclean: true
+
+- name: reinstall widget toolkit
+  ansible.builtin.apt:
+    name: proxmox-widget-toolkit
+    state: present
+    force: true
+  when: proxmox_subscription.disable_nag | bool
 
 # Container and VM Handlers
 # -----------------------------------------------------------------------------
@@ -86,5 +228,21 @@
     state: restarted
     type: qemu
   when: item.id is defined
-  loop: "{{ virtual_machines }}" 
- 
+  loop: "{{ virtual_machines }}"
+
+- name: reboot_required
+  ansible.builtin.reboot:
+    msg: "Rebooting due to microcode update"
+    reboot_timeout: 300
+    test_command: uptime
+  when: ansible_facts.reboot_required | default(false)
+
+- name: reload apparmor
+  service:
+    name: apparmor
+    state: reloaded
+
+- name: restart apparmor
+  service:
+    name: apparmor
+    state: restarted 

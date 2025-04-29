@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# Storage Backend Configuration Tasks
+# =============================================================================
+
+- name: Configure local storage
+  ansible.builtin.command:
+    cmd: "pvesm set local --enable {{ item.enabled | default(1) }} --content {{ item.content | join(',') }}"
+  loop: "{{ storage_config.local | default([]) }}"
+  when: storage_config.local is defined
+  notify: reload storage
+  tags: ["storage", "backends"]
+
+- name: Configure NFS storage
+  ansible.builtin.command:
+    cmd: "pvesm add nfs {{ item.name }} --server {{ item.server }} --export {{ item.export }} --content {{ item.content | join(',') }}"
+  loop: "{{ storage_config.nfs | default([]) }}"
+  when: storage_config.nfs is defined
+  notify: reload storage
+  tags: ["storage", "backends"]
+
+- name: Configure CIFS storage
+  ansible.builtin.command:
+    cmd: "pvesm add cifs {{ item.name }} --server {{ item.server }} --share {{ item.share }} --username {{ item.username }} --password {{ item.password }}"
+  loop: "{{ storage_config.cifs | default([]) }}"
+  when: storage_config.cifs is defined
+  notify: reload storage
+  tags: ["storage", "backends"]
